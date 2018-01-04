@@ -45,21 +45,31 @@ extern int yydebug;
 # define YYTOKENTYPE
   enum yytokentype
   {
-    NUM = 258,
-    PLUS = 259,
-    MINUS = 260,
-    MUL = 261,
-    DIV = 262,
-    END = 263
+    ID = 258,
+    NUM = 259,
+    START = 260,
+    END = 261,
+    READ = 262,
+    WRITE = 263,
+    ASSIGN = 264,
+    PLUS = 265,
+    MINUS = 266,
+    MUL = 267,
+    DIV = 268
   };
 #endif
 /* Tokens.  */
-#define NUM 258
-#define PLUS 259
-#define MINUS 260
-#define MUL 261
-#define DIV 262
-#define END 263
+#define ID 258
+#define NUM 259
+#define START 260
+#define END 261
+#define READ 262
+#define WRITE 263
+#define ASSIGN 264
+#define PLUS 265
+#define MINUS 266
+#define MUL 267
+#define DIV 268
 
 /* Value type.  */
 #if ! defined YYSTYPE && ! defined YYSTYPE_IS_DECLARED
