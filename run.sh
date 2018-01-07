@@ -2,4 +2,8 @@ yacc -d test.y
 lex test.l
 gcc y.tab.c lex.yy.c -o test.exe
 ./test.exe input.expl
-./xsm -l library.lib -e test.xsm
+lex label.l
+gcc lex.yy.c
+./a.out
+rm test.xsm a.out
+./xsm -l library.lib -e code.xsm

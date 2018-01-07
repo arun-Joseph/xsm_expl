@@ -1,6 +1,9 @@
 begin
+	b=0;
 	read(a);
-	read(b);
-	d=a+2*b;
-	write(a+d);
+	while(a!=0) do
+		b=b+a;
+		read(a);
+	endwhile;
+	write(b);
 end

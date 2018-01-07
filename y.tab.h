@@ -52,10 +52,25 @@ extern int yydebug;
     READ = 262,
     WRITE = 263,
     ASSIGN = 264,
-    PLUS = 265,
-    MINUS = 266,
-    MUL = 267,
-    DIV = 268
+    IF = 265,
+    THEN = 266,
+    ELSE = 267,
+    ENDIF = 268,
+    WHILE = 269,
+    DO = 270,
+    ENDWHILE = 271,
+    BREAK = 272,
+    CONTINUE = 273,
+    PLUS = 274,
+    MINUS = 275,
+    MUL = 276,
+    DIV = 277,
+    LT = 278,
+    GT = 279,
+    LE = 280,
+    GE = 281,
+    NE = 282,
+    EQ = 283
   };
 #endif
 /* Tokens.  */
@@ -66,10 +81,25 @@ extern int yydebug;
 #define READ 262
 #define WRITE 263
 #define ASSIGN 264
-#define PLUS 265
-#define MINUS 266
-#define MUL 267
-#define DIV 268
+#define IF 265
+#define THEN 266
+#define ELSE 267
+#define ENDIF 268
+#define WHILE 269
+#define DO 270
+#define ENDWHILE 271
+#define BREAK 272
+#define CONTINUE 273
+#define PLUS 274
+#define MINUS 275
+#define MUL 276
+#define DIV 277
+#define LT 278
+#define GT 279
+#define LE 280
+#define GE 281
+#define NE 282
+#define EQ 283
 
 /* Value type.  */
 #if ! defined YYSTYPE && ! defined YYSTYPE_IS_DECLARED
