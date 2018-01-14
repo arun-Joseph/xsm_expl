@@ -794,8 +794,8 @@ YY_RULE_SETUP
 		if(fl)
 			ln=1;
 		else{
-			lab=malloc((int)(yyleng-1)*sizeof(char));
-			yyless((int)(yyleng-1));
+			lab=malloc((yyleng-1)*sizeof(char));
+			yyless(yyleng-1);
 			strcpy(lab, yytext);
 			insert(lab, line);
 			line-=2;
@@ -828,9 +828,9 @@ YY_RULE_SETUP
 {
 		if(fl){
 			if(isdigit(yytext[6]))
-				fprintf(target_file, "JZ R%c%c, %d", yytext[5], yytext[6], getAddr(yytext+9));
+				fprintf(target_file, "JNZ R%c%c, %d", yytext[5], yytext[6], getAddr(yytext+9));
 			else
-				fprintf(target_file, "JZ R%c, %d", yytext[5], getAddr(yytext+8));
+				fprintf(target_file, "JNZ R%c, %d", yytext[5], getAddr(yytext+8));
 		}
 	}
 	YY_BREAK
@@ -1892,7 +1892,7 @@ int yywrap(void){
 		return 1;
 	}
 	else{
-		yyin=fopen("test.xsm", "r");
+		yyin=fopen("exprtree.xsm", "r");
 		fl=1;
 		return 0;
 	}
@@ -1929,7 +1929,7 @@ int main(){
 	ln=0;
 	line=2048;
 	target_file=fopen("code.xsm", "w");
-	yyin=fopen("test.xsm", "r");
+	yyin=fopen("exprtree.xsm", "r");
 	yylex();
 	return 0;
 }

@@ -26,20 +26,20 @@
 		if(fl)
 			ln=1;
 		else{
-			lab=malloc((int)(yyleng-1)*sizeof(char));
-			yyless((int)(yyleng-1));
+			lab=malloc((yyleng-1)*sizeof(char));
+			yyless(yyleng-1);
 			strcpy(lab, yytext);
 			insert(lab, line);
 			line-=2;
 		}
 	}
 
-"JMP "[a-zA-Z0-9]+ {
+"JMP "([a-zA-Z0-9]+) {
 		if(fl)
 			fprintf(target_file, "JMP %d", getAddr(yytext+4));
 	}
 
-"JZ R"([0-9]+)[,][ ][a-zA-Z0-9]+ {
+"JZ R"([0-9]+)", "([a-zA-Z0-9]+) {
 		if(fl){
 			if(isdigit(yytext[5]))
 				fprintf(target_file, "JZ R%c%c, %d", yytext[4], yytext[5], getAddr(yytext+8));
@@ -48,12 +48,12 @@
 		}
 	}
 
-"JNZ R"([0-9]+)[,][ ][a-zA-Z0-9]+ {
+"JNZ R"([0-9]+)", "([a-zA-Z0-9]+) {
 		if(fl){
 			if(isdigit(yytext[6]))
-				fprintf(target_file, "JZ R%c%c, %d", yytext[5], yytext[6], getAddr(yytext+9));
+				fprintf(target_file, "JNZ R%c%c, %d", yytext[5], yytext[6], getAddr(yytext+9));
 			else
-				fprintf(target_file, "JZ R%c, %d", yytext[5], getAddr(yytext+8));
+				fprintf(target_file, "JNZ R%c, %d", yytext[5], getAddr(yytext+8));
 		}
 	}
 
@@ -62,7 +62,7 @@
 			fprintf(target_file, "CALL 0");
 	}
 
-"CALL "[a-zA-Z0-9]+ {
+"CALL "([a-zA-Z0-9]+) {
 		if(fl)
 			fprintf(target_file, "CALL %d", getAddr(yytext+5));
 	}
@@ -94,7 +94,7 @@ int yywrap(void){
 		return 1;
 	}
 	else{
-		yyin=fopen("test.xsm", "r");
+		yyin=fopen("exprtree.xsm", "r");
 		fl=1;
 		return 0;
 	}
@@ -131,7 +131,7 @@ int main(){
 	ln=0;
 	line=2048;
 	target_file=fopen("code.xsm", "w");
-	yyin=fopen("test.xsm", "r");
+	yyin=fopen("exprtree.xsm", "r");
 	yylex();
 	return 0;
 }

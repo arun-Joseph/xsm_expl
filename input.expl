@@ -1,9 +1,8 @@
+decl
+	int i,*p, x[10][10];
+enddecl
 begin
-	b=0;
-	read(a);
-	while(a!=0) do
-		b=b+a;
-		read(a);
-	endwhile;
-	write(b);
+	p=&x;	
+	read(*p);
+	write(x[0][0]);
 end

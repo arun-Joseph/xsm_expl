@@ -47,59 +47,77 @@ extern int yydebug;
   {
     ID = 258,
     NUM = 259,
-    START = 260,
-    END = 261,
-    READ = 262,
-    WRITE = 263,
-    ASSIGN = 264,
-    IF = 265,
-    THEN = 266,
-    ELSE = 267,
-    ENDIF = 268,
-    WHILE = 269,
-    DO = 270,
-    ENDWHILE = 271,
-    BREAK = 272,
-    CONTINUE = 273,
-    PLUS = 274,
-    MINUS = 275,
-    MUL = 276,
-    DIV = 277,
-    LT = 278,
-    GT = 279,
-    LE = 280,
-    GE = 281,
-    NE = 282,
-    EQ = 283
+    STRVAL = 260,
+    START = 261,
+    END = 262,
+    READ = 263,
+    WRITE = 264,
+    ASSIGN = 265,
+    DECL = 266,
+    ENDDECL = 267,
+    INT = 268,
+    STR = 269,
+    BRKP = 270,
+    IF = 271,
+    THEN = 272,
+    ELSE = 273,
+    ENDIF = 274,
+    WHILE = 275,
+    DO = 276,
+    ENDWHILE = 277,
+    BREAK = 278,
+    CONTINUE = 279,
+    REPEAT = 280,
+    UNTIL = 281,
+    PLUS = 282,
+    MINUS = 283,
+    MUL = 284,
+    DIV = 285,
+    MOD = 286,
+    LT = 287,
+    GT = 288,
+    LE = 289,
+    GE = 290,
+    NE = 291,
+    EQ = 292
   };
 #endif
 /* Tokens.  */
 #define ID 258
 #define NUM 259
-#define START 260
-#define END 261
-#define READ 262
-#define WRITE 263
-#define ASSIGN 264
-#define IF 265
-#define THEN 266
-#define ELSE 267
-#define ENDIF 268
-#define WHILE 269
-#define DO 270
-#define ENDWHILE 271
-#define BREAK 272
-#define CONTINUE 273
-#define PLUS 274
-#define MINUS 275
-#define MUL 276
-#define DIV 277
-#define LT 278
-#define GT 279
-#define LE 280
-#define GE 281
-#define NE 282
-#define EQ 283
+#define STRVAL 260
+#define START 261
+#define END 262
+#define READ 263
+#define WRITE 264
+#define ASSIGN 265
+#define DECL 266
+#define ENDDECL 267
+#define INT 268
+#define STR 269
+#define BRKP 270
+#define IF 271
+#define THEN 272
+#define ELSE 273
+#define ENDIF 274
+#define WHILE 275
+#define DO 276
+#define ENDWHILE 277
+#define BREAK 278
+#define CONTINUE 279
+#define REPEAT 280
+#define UNTIL 281
+#define PLUS 282
+#define MINUS 283
+#define MUL 284
+#define DIV 285
+#define MOD 286
+#define LT 287
+#define GT 288
+#define LE 289
+#define GE 290
+#define NE 291
+#define EQ 292
 
 /* Value type.  */
 #if ! defined YYSTYPE && ! defined YYSTYPE_IS_DECLARED
