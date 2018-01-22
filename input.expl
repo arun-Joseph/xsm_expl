@@ -1,8 +1,40 @@
 decl
-	int i,*p, x[10][10];
+	int swap(int *p, int *q), *ret(), b;
 enddecl
-begin
-	p=&x;	
-	read(*p);
-	write(x[0][0]);
-end
+
+int swap(int *p, int *q){
+	decl
+		int t;
+	enddecl
+	begin
+		t=*p;
+		*p=*q;
+		*q=t;
+		return 0;
+	end
+}
+
+int *ret(){
+	decl
+	enddecl
+	begin
+		b=10;
+		return &b;
+	end
+}
+
+int main() {
+	decl
+		int a, b, k, *l;
+	enddecl
+	begin
+		a=1;
+		b=2;
+		k=swap(&a, &b);
+		write(a);
+		write(b);
+		l=ret();
+		write(*l);
+		return 0;
+	end
+}

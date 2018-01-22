@@ -58,28 +58,33 @@ extern int yydebug;
     INT = 268,
     STR = 269,
     BRKP = 270,
-    IF = 271,
-    THEN = 272,
-    ELSE = 273,
-    ENDIF = 274,
-    WHILE = 275,
-    DO = 276,
-    ENDWHILE = 277,
-    BREAK = 278,
-    CONTINUE = 279,
-    REPEAT = 280,
-    UNTIL = 281,
-    PLUS = 282,
-    MINUS = 283,
-    MUL = 284,
-    DIV = 285,
-    MOD = 286,
-    LT = 287,
-    GT = 288,
-    LE = 289,
-    GE = 290,
-    NE = 291,
-    EQ = 292
+    MAIN = 271,
+    RETURN = 272,
+    IF = 273,
+    THEN = 274,
+    ELSE = 275,
+    ENDIF = 276,
+    WHILE = 277,
+    DO = 278,
+    ENDWHILE = 279,
+    BREAK = 280,
+    CONTINUE = 281,
+    REPEAT = 282,
+    UNTIL = 283,
+    PLUS = 284,
+    MINUS = 285,
+    MUL = 286,
+    DIV = 287,
+    MOD = 288,
+    LT = 289,
+    GT = 290,
+    LE = 291,
+    GE = 292,
+    NE = 293,
+    EQ = 294,
+    AND = 295,
+    OR = 296,
+    NOT = 297
   };
 #endif
 /* Tokens.  */
@@ -96,28 +101,33 @@ extern int yydebug;
 #define INT 268
 #define STR 269
 #define BRKP 270
-#define IF 271
-#define THEN 272
-#define ELSE 273
-#define ENDIF 274
-#define WHILE 275
-#define DO 276
-#define ENDWHILE 277
-#define BREAK 278
-#define CONTINUE 279
-#define REPEAT 280
-#define UNTIL 281
-#define PLUS 282
-#define MINUS 283
-#define MUL 284
-#define DIV 285
-#define MOD 286
-#define LT 287
-#define GT 288
-#define LE 289
-#define GE 290
-#define NE 291
-#define EQ 292
+#define MAIN 271
+#define RETURN 272
+#define IF 273
+#define THEN 274
+#define ELSE 275
+#define ENDIF 276
+#define WHILE 277
+#define DO 278
+#define ENDWHILE 279
+#define BREAK 280
+#define CONTINUE 281
+#define REPEAT 282
+#define UNTIL 283
+#define PLUS 284
+#define MINUS 285
+#define MUL 286
+#define DIV 287
+#define MOD 288
+#define LT 289
+#define GT 290
+#define LE 291
+#define GE 292
+#define NE 293
+#define EQ 294
+#define AND 295
+#define OR 296
+#define NOT 297
 
 /* Value type.  */
 #if ! defined YYSTYPE && ! defined YYSTYPE_IS_DECLARED

@@ -31,6 +31,8 @@
 "end"	{return END;}
 "decl"	{return DECL;}
 "enddecl"	{return ENDDECL;}
+"main"	{return MAIN;}
+"return"	{return RETURN;}
 "int"	{return INT;}
 "str"	{return STR;}
 "read"	{return READ;}
@@ -47,6 +49,9 @@
 "repeat"	{return REPEAT;}
 "until"	{return UNTIL;}
 "breakpoint"	{return BRKP;}
+"AND"	{return AND;}
+"OR"	{return OR;}
+"NOT"	{return NOT;}
 [a-zA-Z]([a-zA-Z0-9]*)	{
 		strval=strdup(yytext);
 		yylval=createTree(0, inttype, strval, NODE_ID, NULL, NULL, NULL);
@@ -74,7 +79,8 @@
 [\n \t] {}
 "["	{return *yytext;}
 "]"	{return *yytext;}
-[()&,;\"] 	{return *yytext;}
+[{}()]	{return *yytext;}
+[&,;\"] {return *yytext;}
 . 	{
 		yyerror(strcat(yytext, " : unknown charcter"));
 		exit(1);
