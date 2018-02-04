@@ -15,10 +15,10 @@
 	
 %}
 
-%token ID NUM STRVAL START END READ WRITE ASSIGN
-%token DECL ENDDECL INT STR BRKP MAIN RETURN
+%token ID NUM STRVAL START END READ WRITE ASSIGN INIT ALLOC FREE
+%token TYPE ENDTYPE DECL ENDDECL INT STR BRKP MAIN RETURN
 %token IF THEN ELSE ENDIF WHILE DO ENDWHILE BREAK CONTINUE REPEAT UNTIL
-%token PLUS MINUS MUL DIV MOD LT GT LE GE NE EQ AND OR NOT
+%token PLUS MINUS MUL DIV MOD LT GT LE GE NE EQ AND OR NOT NIL
 %left OR
 %left AND
 %left PLUS MINUS
@@ -28,8 +28,38 @@
 
 %%
 
-program : GDeclBlock FDefBlock MainBlock
-	| GDeclBlock MainBlock
+program : TypeDefBlock GDeclBlock FDefBlock MainBlock
+	| TypeDefBlock GDeclBlock MainBlock
+	;
+
+TypeDefBlock : TYPE TypeDefList ENDTYPE
+	|
+	;
+
+TypeDefList : TypeDefList TypeDef
+	| TypeDef
+	;
+
+TypeDef : ID '{' FieldDeclList '}'	{
+			TInstall($1->name, 0, Fhead);
+			Fhead=Ftail=NULL;
+		}
+	;
+
+FieldDeclList : FieldDeclList FieldDecl
+	| FieldDecl
+	;
+
+FieldDecl : TypeName ID ';'	{FInstall(declType, $2->name);}
+	;
+
+TypeName : INT	{declType=TLookup("integer");}
+	| STR	{declType=TLookup("string");}
+	| ID	{
+		declType=TLookup($1->name);
+		if(declType==NULL)
+			declType=TLookup("type");
+	}
 	;
 
 GDeclBlock : DECL GDeclList ENDDECL	{
@@ -49,48 +79,65 @@ GDeclList : GDeclList GDecl
 GDecl : Type GidList ';'
 	;
 
-Type : INT 	{declType=inttype;}
-	| STR	{declType=strtype;}
+Type : INT 	{declType=TLookup("integer");}
+	| STR	{declType=TLookup("string");}
+	| ID	{
+			declType=TLookup($1->name);
+			if(declType==NULL){
+				printf("Unknown type: %s\n", $1->name);
+				exit(1);
+			}
+		}
 	;
 
 GidList : GidList ',' Gid
 	| Gid
 	;
 
-Gid : ID				{GInstall($1->varname, declType, 1, 1, NODE_ID, NULL);}
-	| ID '[' NUM ']'		{GInstall($1->varname, declType, $3->val, 1, NODE_ARRAY, NULL);}
-	| ID '[' NUM ']' '[' NUM ']'	{GInstall($1->varname, declType, $3->val, $6->val, NODE_MATRIX, NULL);}
-	| MUL ID			{GInstall($2->varname, declType, 1, 1, NODE_PTR, NULL);}
+Gid : ID				{GInstall($1->name, declType, 1, 1, NODE_ID, NULL);}
+	| ID '[' NUM ']'		{GInstall($1->name, declType, $3->value.intval, 1, NODE_ARRAY, NULL);}
+	| ID '[' NUM ']' '[' NUM ']'	{GInstall($1->name, declType, $3->value.intval, $6->value.intval, NODE_MATRIX, NULL);}
+	| MUL ID			{GInstall($2->name, declType, 1, 1, NODE_PTR, NULL);}
 	| ID '(' ParamList ')'		{
-						GInstall($1->varname, declType, 0, 0, NODE_FUNC, Phead);
+						GInstall($1->name, declType, 0, 0, NODE_FUNC, Phead);
 						Phead=Ptail=NULL;
 					}
 	| MUL ID '(' ParamList ')'	{
-						GInstall($2->varname, declType, 0, 0, NODE_FUNC, Phead);	
+						GInstall($2->name, declType, 0, 0, NODE_FUNC, Phead);	
 						Phead=Ptail=NULL;
 					}
-	| ID '(' ')'			{GInstall($1->varname, declType, 0, 0, NODE_FUNC, NULL);}
-	| MUL ID '(' ')'		{GInstall($2->varname, declType, 0, 0, NODE_FUNC, NULL);}
+	| ID '(' ')'			{GInstall($1->name, declType, 0, 0, NODE_FUNC, NULL);}
+	| MUL ID '(' ')'		{GInstall($2->name, declType, 0, 0, NODE_FUNC, NULL);}
 	;
 
 FDefBlock : FDefBlock FDef
 	| FDef
 	;
 
-FDef : Type ID '(' ParamList ')' '{' LDeclBlock Body '}'	{
+FuncType : INT	{functype=TLookup("integer");}
+	| STR	{functype=TLookup("string");}
+	| ID	{
+			functype=TLookup($1->name);
+			if(functype==NULL){
+				printf("Unknown type: %s\n", $1->name);
+				exit(1);
+			}
+		}
+	;
+
+FDef : FuncType ID '(' ParamList ')' '{' LDeclBlock Body '}'	{
 			struct Lsymbol *Ltemp;
 			struct Gsymbol *Gtemp;
 			struct Paramstruct *Ptemp1, *Ptemp2;
-			functype=declType;
 			binding=1;
 
-			Gtemp=GLookup($2->varname);
+			Gtemp=GLookup($2->name);
 			if(Gtemp==NULL || Gtemp->nodetype!=NODE_FUNC){
-				printf("Function not declared: %s\n", $2->varname);
+				printf("Function not declared: %s\n", $2->name);
 				exit(1);
 			}
 			if(Gtemp->size1!=0){
-				printf("Multiple Function Declaration: %s\n", $2->varname);
+				printf("Multiple Function Declaration: %s\n", $2->name);
 				exit(1);
 			}
 			Gtemp->size1--;
@@ -100,7 +147,9 @@ FDef : Type ID '(' ParamList ')' '{' LDeclBlock Body '}'	{
 			Ptemp2=Gtemp->paramlist;
 
 			while(Ptemp1!=NULL && Ptemp2!=NULL){
-				if(Ptemp1->type!=Ptemp2->type || strcmp(Ptemp1->name, Ptemp2->name) || Ptemp1->nodetype!=Ptemp2->nodetype){
+				if(Ptemp1->type!=Ptemp2->type
+					|| strcmp(Ptemp1->name, Ptemp2->name)
+					|| Ptemp1->nodetype!=Ptemp2->nodetype){
 					printf("Incorrect Parameter List\n");
 					exit(1);
 				}
@@ -135,19 +184,18 @@ FDef : Type ID '(' ParamList ')' '{' LDeclBlock Body '}'	{
 			Lhead=Ltail=NULL;
 			Phead=Ptail=NULL;
 		}
-	| Type ID '(' ')' '{' LDeclBlock Body '}'	{
+	| FuncType ID '(' ')' '{' LDeclBlock Body '}'	{
 			struct Lsymbol *Ltemp;
 			struct Gsymbol *Gtemp;
-			functype=declType;
 			binding=1;
 
-			Gtemp=GLookup($2->varname);
+			Gtemp=GLookup($2->name);
 			if(Gtemp==NULL || Gtemp->nodetype!=NODE_FUNC){
-				printf("Function not declared: %s\n", $2->varname);
+				printf("Function not declared: %s\n", $2->name);
 				exit(1);
 			}
 			if(Gtemp->size1!=0){
-				printf("Multiple Function Declaration: %s\n", $2->varname);
+				printf("Multiple Function Declaration: %s\n", $2->name);
 				exit(1);
 			}
 			Gtemp->size1--;
@@ -180,20 +228,19 @@ FDef : Type ID '(' ParamList ')' '{' LDeclBlock Body '}'	{
 			Lhead=Ltail=NULL;
 			Phead=Ptail=NULL;
 		}
-	| Type MUL ID '(' ParamList ')' '{' LDeclBlock Body '}'	{
+	| FuncType MUL ID '(' ParamList ')' '{' LDeclBlock Body '}'	{
 			struct Lsymbol *Ltemp;
 			struct Gsymbol *Gtemp;
 			struct Paramstruct *Ptemp1, *Ptemp2;
-			functype=declType;
 			binding=1;
 
-			Gtemp=GLookup($3->varname);
+			Gtemp=GLookup($3->name);
 			if(Gtemp==NULL || Gtemp->nodetype!=NODE_FUNC){
-				printf("Function not declared: %s\n", $3->varname);
+				printf("Function not declared: %s\n", $3->name);
 				exit(1);
 			}
 			if(Gtemp->size1!=0){
-				printf("Multiple Function Declaration: %s\n", $3->varname);
+				printf("Multiple Function Declaration: %s\n", $3->name);
 				exit(1);
 			}
 			Gtemp->size1--;
@@ -238,19 +285,18 @@ FDef : Type ID '(' ParamList ')' '{' LDeclBlock Body '}'	{
 			Lhead=Ltail=NULL;
 			Phead=Ptail=NULL;
 		}
-	| Type MUL ID '(' ')' '{' LDeclBlock Body '}'	{
+	| FuncType MUL ID '(' ')' '{' LDeclBlock Body '}'	{
 			struct Lsymbol *Ltemp;
 			struct Gsymbol *Gtemp;
-			functype=declType;
 			binding=1;
 
-			Gtemp=GLookup($3->varname);
+			Gtemp=GLookup($3->name);
 			if(Gtemp==NULL || Gtemp->nodetype!=NODE_FUNC){
-				printf("Function not declared: %s\n", $3->varname);
+				printf("Function not declared: %s\n", $3->name);
 				exit(1);
 			}
 			if(Gtemp->size1!=0){
-				printf("Multiple Function Declaration: %s\n", $3->varname);
+				printf("Multiple Function Declaration: %s\n", $3->name);
 				exit(1);
 			}
 			Gtemp->size1--;
@@ -290,26 +336,33 @@ ParamList : ParamList ',' Param
 
 Param : PType ID	{
 			struct Paramstruct *Ptemp;
-			Ptemp=PLookup($2->varname);
+			Ptemp=PLookup($2->name);
 			if(Ptemp!=NULL){
-				printf("Multiple variable declaration: %s\n", $2->varname);
+				printf("Multiple variable declaration: %s\n", $2->name);
 				exit(1);
 			}
-			PInstall($2->varname, PdeclType, NODE_ID);
+			PInstall($2->name, PdeclType, NODE_ID);
 		}
 	| PType MUL ID	{
 			struct Paramstruct *Ptemp;
-			Ptemp=PLookup($3->varname);
+			Ptemp=PLookup($3->name);
 			if(Ptemp!=NULL){
-				printf("Multiple variable declaration: %s\n", $3->varname);
+				printf("Multiple variable declaration: %s\n", $3->name);
 				exit(1);
 			}
-			PInstall($3->varname, PdeclType, NODE_PTR);
+			PInstall($3->name, PdeclType, NODE_PTR);
 		}
 	;
 
-PType : INT 	{PdeclType=inttype;}
-	| STR	{PdeclType=strtype;}
+PType : INT 	{PdeclType=TLookup("integer");}
+	| STR	{PdeclType=TLookup("string");}
+	| ID	{
+			PdeclType=TLookup($1->name);
+			if(PdeclType==NULL){
+				printf("Unknown type: %s", $1->name);
+				exit(1);
+			}
+		}
 	;
 
 LDeclBlock : DECL LDeclList ENDDECL
@@ -323,17 +376,20 @@ LDeclList : LDeclList LDecl
 LDecl : Type IdList ';'
 	;
 
-IdList : IdList ',' ID		{LInstall($3->varname, declType, NODE_ID);}
-	| IdList ',' MUL ID	{LInstall($4->varname, declType, NODE_PTR);}
-	| ID			{LInstall($1->varname, declType, NODE_ID);}
-	| MUL ID		{LInstall($2->varname, declType, NODE_PTR);}
+IdList : IdList ',' ID		{LInstall($3->name, declType, NODE_ID);}
+	| IdList ',' MUL ID	{LInstall($4->name, declType, NODE_PTR);}
+	| ID			{LInstall($1->name, declType, NODE_ID);}
+	| MUL ID		{LInstall($2->name, declType, NODE_PTR);}
 	;
 
-MainBlock : INT MAIN '(' ')' '{' LDeclBlock Body '}'	{
+MainBlock : FuncType MAIN '(' ')' '{' LDeclBlock Body '}'	{
 			struct Lsymbol *Ltemp;
 			struct Gsymbol *Gtemp;
-			functype=inttype;
 			binding=1;
+
+			if(functype!=TLookup("integer")){
+				printf("Main function should return INT\n");
+			}
 
 			Gtemp=Ghead;
 			while(Gtemp!=NULL){
@@ -368,139 +424,193 @@ MainBlock : INT MAIN '(' ')' '{' LDeclBlock Body '}'	{
 		}
 	;
 
-Body : START Slist RetStmt END	{$$=createTree(0, 0, NULL, NODE_CONN, $2, $3, NULL);}
-	| START RetStmt END	{$$=createTree(0, 0, NULL, NODE_CONN, $2, NULL, NULL);}
+Body : START Slist RetStmt END	{$$=createTree(TLookup("void"), NODE_CONN, NULL, NULL, NULL, $2, $3, NULL);}
+	| START RetStmt END	{$$=createTree(TLookup("void"), NODE_CONN, NULL, NULL, NULL, $2, NULL, NULL);}
 	;
 
-Slist :	Slist Stmt	{$$=createTree(0, 0, NULL, NODE_CONN, $1, $2, NULL);}
+Slist :	Slist Stmt	{$$=createTree(TLookup("void"), NODE_CONN, NULL, NULL, NULL, $1, $2, NULL);}
 	| Stmt		{$$=$1;}
 	;
 
 Stmt :	InputStmt | OutputStmt | AsgStmt | IfStmt | WhileStmt	{$$=$1;}
-	| BREAK ';'	{$$=createTree(0, 0, NULL, NODE_BREAK, NULL, NULL, NULL);}
-	| CONTINUE ';'	{$$=createTree(0, 0, NULL, NODE_CONTINUE, NULL, NULL, NULL);}
-	| BRKP ';'	{$$=createTree(0, 0, NULL, NODE_BRKP, NULL, NULL, NULL);}
+	| BREAK ';'	{$$=createTree(TLookup("void"), NODE_BREAK, NULL, NULL, NULL, NULL, NULL, NULL);}
+	| CONTINUE ';'	{$$=createTree(TLookup("void"), NODE_CONTINUE, NULL, NULL, NULL, NULL, NULL, NULL);}
+	| BRKP ';'	{$$=createTree(TLookup("void"), NODE_BRKP, NULL, NULL, NULL, NULL, NULL, NULL);}
 	;
 
 InputStmt : READ '(' ID ')' ';'		{
 				idCheck($3, NODE_ID);
-				$$=createTree(0, 0, NULL, NODE_READ, $3, NULL, NULL);
+				$$=createTree(TLookup("void"), NODE_READ, NULL, NULL, NULL, $3, NULL, NULL);
 			}
 	| READ '(' ID '[' Expr ']' ')' ';'	{
 				idCheck($3, NODE_ARRAY);
-				typeCheck($5->type, 0, NODE_ARRAY);
-				$$=createTree(0, 0, NULL, NODE_READ_ARRAY, $3, $5, NULL);
+				typeCheck($5->type, TLookup("integer"), NODE_ARRAY);
+				$$=createTree(TLookup("void"), NODE_READ_ARRAY, NULL, NULL, NULL, $3, $5, NULL);
 			}
 	| READ '(' ID '[' Expr ']' '[' Expr ']' ')' ';'	{
 				idCheck($3, NODE_MATRIX);
 				typeCheck($5->type, $8->type, NODE_MATRIX);
-				$$=createTree(0, 0, NULL, NODE_READ_MATRIX, $3, $5, $8);
+				$$=createTree(TLookup("void"), NODE_READ_MATRIX, NULL, NULL, NULL, $3, $5, $8);
 			}
 	| READ '(' MUL ID ')' ';'		{
 				idCheck($4, NODE_PTR);
-				$$=createTree(0, 0, NULL, NODE_READ_PTR, $4, NULL, NULL);
+				$$=createTree(TLookup("void"), NODE_READ_PTR, NULL, NULL, NULL, $4, NULL, NULL);
 			}
 	;
 
-OutputStmt : WRITE '(' Expr ')' ';'	{$$=createTree(0, 0, NULL,  NODE_WRITE, $3, NULL, NULL);}
+OutputStmt : WRITE '(' Expr ')' ';'	{$$=createTree(TLookup("void"), NODE_WRITE, NULL, NULL, NULL, $3, NULL, NULL);}
 	;
 
 AsgStmt : ID ASSIGN Expr ';' {
 				idCheck($1, NODE_ID);
 				typeCheck($1->type, $3->type, NODE_ASSIGN);
-				$$=createTree(0, 0, NULL, NODE_ASSIGN, $1, $3, NULL); 
+				$$=createTree(TLookup("void"), NODE_ASSIGN, NULL, NULL, NULL, $1, $3, NULL); 
 			}
 	| ID '[' Expr ']' ASSIGN Expr ';'	{
 				idCheck($1, NODE_ARRAY);
-				typeCheck($3->type, 0, NODE_ARRAY);
+				typeCheck($3->type, TLookup("void"), NODE_ARRAY);
 				typeCheck($1->type, $6->type, NODE_ASSIGN);
-				$$=createTree(0, 0, NULL, NODE_ASSIGN_ARRAY, $1, $3, $6);
+				$$=createTree(TLookup("void"), NODE_ASSIGN_ARRAY, NULL, NULL, NULL, $1, $3, $6);
 			}
 	| ID '[' Expr ']' '[' Expr ']' ASSIGN Expr ';'	{
 				idCheck($1, NODE_MATRIX);
 				typeCheck($3->type, $6->type, NODE_MATRIX);
 				typeCheck($1->type, $9->type, NODE_ASSIGN);
-				$$=createTree(0, 0, NULL, NODE_ASSIGN_MATRIX, $1, createTree(0, 0, NULL, NODE_CONN, $3, $6, NULL),$9);
+				$$=createTree(TLookup("void"), NODE_ASSIGN_MATRIX, NULL, NULL, NULL, $1,
+					createTree(TLookup("void"), NODE_CONN, NULL, NULL, NULL, $3, $6, NULL), $9);
 			}
 	| MUL ID ASSIGN Expr ';'	{
 				idCheck($2, NODE_PTR);
 				typeCheck($2->type, $4->type, NODE_ASSIGN);
-				$$=createTree(0, 0, NULL, NODE_ASSIGN_PTR, $2, $4, NULL);
+				$$=createTree(TLookup("void"), NODE_ASSIGN_PTR, NULL, NULL, NULL, $2, $4, NULL);
+			}
+	| Field ASSIGN Expr ';'	{
+				typeCheck($1->type, $3->type, NODE_ASSIGN);
+				$$=createTree(TLookup("void"), NODE_ASSIGN_FIELD, NULL, NULL, NULL, $1, $3, NULL);
+			}
+	| ID ASSIGN INIT '(' ')' ';'	{
+				idCheck($1, NODE_ID);
+				typeCheck($1->type, TLookup("integer"), NODE_ASSIGN);
+				$$=createTree(TLookup("void"), NODE_ASSIGN, NULL, NULL, NULL, $1,
+					createTree(TLookup("integer"), NODE_INIT, NULL, NULL, NULL, NULL, NULL, NULL), NULL);
+			}
+	| ID ASSIGN ALLOC '(' ')' ';'	{
+				typeCheck($1->type, TLookup("type"), NODE_ALLOC);
+				$$=createTree(TLookup("void"), NODE_ASSIGN, NULL, NULL, NULL, $1,
+					createTree(TLookup("type"), NODE_ALLOC, NULL, NULL, NULL, NULL, NULL, NULL), NULL);
+			}
+	| Field ASSIGN ALLOC '(' ')' ';'	{
+				typeCheck($1->type, TLookup("type"), NODE_ALLOC);
+				$$=createTree(TLookup("void"), NODE_ASSIGN_FIELD, NULL, NULL, NULL, $1,
+					createTree(TLookup("type"), NODE_ALLOC, NULL, NULL, NULL, NULL, NULL, NULL), NULL);
+			}
+	| FREE '(' ID ')' ';'	{
+				typeCheck($3->type, TLookup("type"), NODE_FREE);
+				$$=createTree(TLookup("void"), NODE_FREE, NULL, NULL, NULL, $3, NULL, NULL);
+			}
+	| FREE '(' Field ')' ';'	{
+				typeCheck($3->type, TLookup("type"), NODE_FREE);
+				$$=createTree(TLookup("void"), NODE_FREE, NULL, NULL, NULL, $3, NULL, NULL);
 			}
 	;
 
-IfStmt : IF '(' Expr ')' THEN Slist ELSE Slist ENDIF ';'	{$$=createTree(0, 0, NULL, NODE_ELIF, $3, $6, $8);}
-	| IF '(' Expr ')' THEN Slist ENDIF ';'		{$$=createTree(0, 0, NULL, NODE_IF, $3, $6, NULL);}
+IfStmt : IF '(' Expr ')' THEN Slist ELSE Slist ENDIF ';'{$$=createTree(TLookup("void"), NODE_ELIF, NULL, NULL, NULL, $3, $6, $8);}
+	| IF '(' Expr ')' THEN Slist ENDIF ';'		{$$=createTree(TLookup("void"), NODE_IF, NULL, NULL, NULL, $3, $6, NULL);}
 	;
 
-WhileStmt : WHILE '(' Expr ')' DO Slist ENDWHILE ';'	{$$=createTree(0, 0, NULL, NODE_WHILE, $3, $6, NULL);}
-	| DO Slist WHILE '(' Expr ')' ';'		{$$=createTree(0, 0, NULL, NODE_DO_WHILE, $2, $5, NULL);}
-	| REPEAT Slist UNTIL '(' Expr ')' ';'		{$$=createTree(0, 0, NULL, NODE_REPEAT, $2, $5, NULL);}
+WhileStmt : WHILE '(' Expr ')' DO Slist ENDWHILE ';'	{$$=createTree(TLookup("void"), NODE_WHILE, NULL, NULL, NULL, $3, $6, NULL);}
+	| DO Slist WHILE '(' Expr ')' ';'	{$$=createTree(TLookup("void"), NODE_DO_WHILE, NULL, NULL, NULL, $2, $5, NULL);}
+	| REPEAT Slist UNTIL '(' Expr ')' ';'	{$$=createTree(TLookup("void"), NODE_REPEAT, NULL, NULL, NULL, $2, $5, NULL);}
+	;
+
+Field : Field '.' ID	{
+				if(FLookup($1->type, $3->name)==NULL){
+					printf("Unknown identifier in FIELD: %s\n", $3->name);
+					exit(1);
+				}
+				tptr=createTree(TLookup("void"), NODE_FIELD, NULL, NULL, NULL, NULL, $3, NULL);
+				tptr1=$1;
+				while(tptr1->ptr3!=NULL)
+					tptr1=tptr1->ptr3;
+				tptr1->ptr3=tptr;
+				$$=$1;
+				$$->type=$3->type;
+			}
+	| ID '.' ID	{
+				struct Fieldlist *Ftemp=FLookup($1->type, $3->name);
+				if(Ftemp==NULL){
+					printf("Unknown identifier in FIELD: %s\n", $3->name);
+					exit(1);
+				}
+				$$=createTree(Ftemp->type, NODE_FIELD, NULL, NULL, NULL, $1, $3, NULL);
+			}
 	;
 
 Expr : 	Expr PLUS Expr 	{
 				typeCheck($1->type, $3->type, NODE_PLUS);
-				$$=createTree(0, inttype, NULL, NODE_PLUS, $1, $3, NULL);
+				$$=createTree(TLookup("integer"), NODE_PLUS, NULL, NULL, NULL, $1, $3, NULL);
 			}
 	| Expr MINUS Expr 	{
 				typeCheck($1->type, $3->type, NODE_MINUS);
-				$$=createTree(0, inttype, NULL, NODE_MINUS, $1, $3, NULL);
+				$$=createTree(TLookup("integer"), NODE_MINUS, NULL, NULL, NULL, $1, $3, NULL);
 			}
 	| Expr MUL Expr 	{
 				typeCheck($1->type, $3->type, NODE_MUL);
-				$$=createTree(0, inttype, NULL, NODE_MUL, $1, $3, NULL);
+				$$=createTree(TLookup("integer"), NODE_MUL, NULL, NULL, NULL, $1, $3, NULL);
 			}
 	| Expr DIV Expr 	{
 				typeCheck($1->type, $3->type, NODE_DIV);
-				$$=createTree(0, inttype, NULL, NODE_DIV, $1, $3, NULL);
+				$$=createTree(TLookup("integer"), NODE_DIV, NULL, NULL, NULL, $1, $3, NULL);
 			}
 	| Expr MOD Expr	{
 				typeCheck($1->type, $3->type, NODE_MOD);
-				$$=createTree(0, inttype, NULL, NODE_MOD, $1, $3, NULL);
+				$$=createTree(TLookup("integer"), NODE_MOD, NULL, NULL, NULL, $1, $3, NULL);
 			}
 	| Expr LT Expr	{
 				typeCheck($1->type, $3->type, NODE_LT);
-				$$=createTree(0, booltype, NULL, NODE_LT, $1, $3, NULL);
+				$$=createTree(TLookup("boolean"), NODE_LT, NULL, NULL, NULL, $1, $3, NULL);
 			}
 	| Expr GT Expr	{
 				typeCheck($1->type, $3->type, NODE_GT);
-				$$=createTree(0, booltype, NULL, NODE_GT, $1, $3, NULL);
+				$$=createTree(TLookup("boolean"), NODE_GT, NULL, NULL, NULL, $1, $3, NULL);
 			}
 	| Expr LE Expr	{
 				typeCheck($1->type, $3->type, NODE_LE);
-				$$=createTree(0, booltype, NULL, NODE_LE, $1, $3, NULL);
+				$$=createTree(TLookup("boolean"), NODE_LE, NULL, NULL, NULL, $1, $3, NULL);
 			}
 	| Expr GE Expr	{
 				typeCheck($1->type, $3->type, NODE_GE);
-				$$=createTree(0, booltype, NULL, NODE_GE, $1, $3, NULL);
+				$$=createTree(TLookup("boolean"), NODE_GE, NULL, NULL, NULL, $1, $3, NULL);
 			}
 	| Expr NE Expr	{
 				typeCheck($1->type, $3->type, NODE_NE);
-				$$=createTree(0, booltype, NULL, NODE_NE, $1, $3, NULL);
+				$$=createTree(TLookup("boolean"), NODE_NE, NULL, NULL, NULL, $1, $3, NULL);
 			}
 	| Expr EQ Expr	{
 				typeCheck($1->type, $3->type, NODE_EQ);
-				$$=createTree(0, booltype, NULL, NODE_EQ, $1, $3, NULL);
+				$$=createTree(TLookup("boolean"), NODE_EQ, NULL, NULL, NULL, $1, $3, NULL);
 			}
 	| Expr AND Expr	{
 				typeCheck($1->type, $3->type, NODE_AND);
-				$$=createTree(0, booltype, NULL, NODE_AND, $1, $3, NULL);
+				$$=createTree(TLookup("boolean"), NODE_AND, NULL, NULL, NULL, $1, $3, NULL);
 			}
 	| Expr OR Expr	{
 				typeCheck($1->type, $3->type, NODE_OR);
-				$$=createTree(0, booltype, NULL, NODE_OR, $1, $3, NULL);
+				$$=createTree(TLookup("boolean"), NODE_OR, NULL, NULL, NULL, $1, $3, NULL);
 			}
 	| NOT Expr	{
-				typeCheck($2->type, inttype, NODE_NOT);
-				$$=createTree(0, booltype, NULL, NODE_NOT, $2, NULL, NULL);
+				typeCheck($2->type, TLookup("integer"), NODE_NOT);
+				$$=createTree(TLookup("boolean"), NODE_NOT, NULL, NULL, NULL, $2, NULL, NULL);
 			}
 	| MINUS Expr	{
-				typeCheck(inttype, $2->type, NODE_MINUS);
-				$$=createTree(0, inttype, NULL, NODE_NEG, $2, NULL, NULL);
+				typeCheck(TLookup("integer"), $2->type, NODE_MINUS);
+				$$=createTree(TLookup("boolean"), NODE_NEG, NULL, NULL, NULL, $2, NULL, NULL);
 			}
 	| '(' Expr ')' 	{$$=$2;}
 	| NUM		{$$=$1;}
 	| STRVAL	{$$=$1;}
+	| NIL		{$$=createTree(TLookup("type"), NODE_NULL, NULL, NULL, NULL, NULL, NULL, NULL);}
+	| Field		{$$=$1;}
 	| ID		{
 				idCheck($1, NODE_ID);
 				$$=$1;
@@ -508,55 +618,53 @@ Expr : 	Expr PLUS Expr 	{
 	| ID '[' Expr ']'	{
 				idCheck($1, NODE_ARRAY);
 				typeCheck($3->type, 0, NODE_ARRAY);
-				$$=createTree(0, $1->type, NULL, NODE_ARRAY, $1, $3, NULL);
+				$$=createTree($1->type, NODE_ARRAY, NULL, NULL, NULL, $1, $3, NULL);
 			}
 	| ID '[' Expr ']' '[' Expr ']'	{
 				idCheck($1, NODE_MATRIX);
 				typeCheck($3->type, $6->type, NODE_MATRIX);
-				$$=createTree(0, $1->type, NULL, NODE_MATRIX, $1, $3, $6);
+				$$=createTree($1->type, NODE_MATRIX, NULL, NULL, NULL, $1, $3, $6);
 			}
 	| MUL ID	{
 				idCheck($2, NODE_PTR);
-				$$=createTree(0, $2->type, NULL, NODE_PTR, $2, NULL, NULL);
+				$$=createTree($2->type, NODE_PTR, NULL, NULL, NULL, $2, NULL, NULL);
 			}
-	| '&' ID	{$$=createTree(0, inttype, NULL, NODE_REF, $2, NULL, NULL);}
+	| '&' ID	{$$=createTree(TLookup("integer"), NODE_REF, NULL, NULL, NULL, $2, NULL, NULL);}
 	| '&' ID '[' Expr ']'	{
 				idCheck($2, NODE_REF_ARRAY);
-				typeCheck($4->type, 0, NODE_ARRAY);
-				$$=createTree(0, inttype, NULL, NODE_REF_ARRAY, $2, $4, NULL);
+				typeCheck($4->type, TLookup("integer"), NODE_ARRAY);
+				$$=createTree(TLookup("integer"), NODE_REF_ARRAY, NULL, NULL, NULL, $2, $4, NULL);
 			}
 	| '&' ID '[' Expr ']' '[' Expr ']'	{
 				idCheck($2, NODE_REF_MATRIX);
 				typeCheck($4->type, $7->type, NODE_MATRIX);
-				$$=createTree(0, inttype, NULL, NODE_REF_MATRIX, $2, $4, $7);
+				$$=createTree(TLookup("integer"), NODE_REF_MATRIX, NULL, NULL, NULL, $2, $4, $7);
 			}
 	| ID '(' ArgList ')'	{
 				struct Gsymbol *Gtemp;
 				idCheck($1, NODE_FUNC);
-				Gtemp=GLookup($1->varname);
-				$$=createTree(0, $1->type, NULL, NODE_FUNC, $1, $3, NULL);
-				$$->arglist=$3;
+				Gtemp=GLookup($1->name);
+				$$=createTree($1->type, NODE_FUNC, NULL, NULL, $3, $1, $3, NULL);
 			}
 	| ID '(' ')'	{
 				struct Gsymbol *Gtemp;
 				idCheck($1, NODE_FUNC);
-				Gtemp=GLookup($1->varname);
+				Gtemp=GLookup($1->name);
 				if(Gtemp->paramlist!=NULL){
-					printf("Parameter List is not NULL: %s\n", $1->varname);
+					printf("Parameter List is not NULL: %s\n", $1->name);
 					exit(1);
 				}
-				$$=createTree(0, $1->type, NULL, NODE_FUNC, $1, NULL, NULL);
-				$$->arglist=NULL;
+				$$=createTree($1->type, NODE_FUNC, NULL, NULL, NULL, $1, NULL, NULL);
 			}
 	;
 
-ArgList : ArgList ',' Expr	{$$=createTree(0, 0, NULL, NODE_ARG, $3, $1, NULL);}
-	| Expr			{$$=createTree(0, 0, NULL, NODE_ARG, $1, NULL, NULL);}
+ArgList : ArgList ',' Expr	{$$=createTree($3->type, NODE_ARG, NULL, NULL, NULL, $3, $1, NULL);}
+	| Expr			{$$=createTree($1->type, NODE_ARG, NULL, NULL, NULL, $1, NULL, NULL);}
 	;
 
 RetStmt : RETURN Expr ';'	{
 				typeCheck($2->type, functype, NODE_ASSIGN);
-				$$=createTree(0, 0, NULL, NODE_RET, $2, NULL, NULL);
+				$$=createTree($2->type, NODE_RET, NULL, NULL, NULL, $2, NULL, NULL);
 			}
 	;
 
@@ -567,6 +675,7 @@ void yyerror(char const *s){
 }
 
 int main(int argc, char* argv[]){
+	TypeTableCreate();
 	if(argc>1){
 		fp=fopen(argv[1], "r");
 		if(fp)

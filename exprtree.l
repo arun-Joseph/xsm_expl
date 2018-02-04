@@ -1,34 +1,36 @@
 %{
 
 	#include <stdio.h>
-	#include "y.tab.h"
 	#include <stdlib.h>
 	#include <string.h>
-	
+
+	#include "y.tab.h"
+
 	#define NODE_ID 0
 	#define NODE_NUM 1
 	#define NODE_STR 2
 
-	#define inttype 100
-	#define strtype 101
-	#define booltype 102
-
 	int yywrap(void);
-
-	int intval;
 	char *strval;
+
+	union Constant{
+		int intval;
+		char *strval;
+	}value;
 	
 %}
 
 %%
 
 [0-9]+ 	{
-		intval=atoi(yytext);
-		yylval=createTree(intval, inttype, NULL, NODE_NUM, NULL, NULL, NULL);
+		value.intval=atoi(yytext);
+		yylval=createTree(TLookup("integer"), NODE_NUM, NULL, &value, NULL, NULL, NULL, NULL);
 		return NUM;
 	}
 "begin"	{return START;}
 "end"	{return END;}
+"type"	{return TYPE;}
+"endtype"	{return ENDTYPE;}
 "decl"	{return DECL;}
 "enddecl"	{return ENDDECL;}
 "main"	{return MAIN;}
@@ -49,19 +51,23 @@
 "repeat"	{return REPEAT;}
 "until"	{return UNTIL;}
 "breakpoint"	{return BRKP;}
+"initialize"	{return INIT;}
+"alloc"	{return ALLOC;}
+"free"	{return FREE;}
+"null"	{return NIL;}
 "AND"	{return AND;}
 "OR"	{return OR;}
 "NOT"	{return NOT;}
 [a-zA-Z]([a-zA-Z0-9]*)	{
 		strval=strdup(yytext);
-		yylval=createTree(0, inttype, strval, NODE_ID, NULL, NULL, NULL);
+		yylval=createTree(TLookup("integer"), NODE_ID, strval, NULL, NULL, NULL, NULL, NULL);
 		return ID;
 	}
 \"(\\.|[^\\\"])*\" {
 		strval=malloc((yyleng-2)*sizeof(char));
 		strcpy(strval, yytext+1);
 		strval[yyleng-2]='\0';
-		yylval=createTree(0, strtype, strval, NODE_STR, NULL, NULL, NULL);
+		yylval=createTree(TLookup("string"), NODE_STR, strval, NULL, NULL, NULL, NULL, NULL);
 		return STRVAL;
 	}
 "="	{return ASSIGN;}
@@ -80,7 +86,7 @@
 "["	{return *yytext;}
 "]"	{return *yytext;}
 [{}()]	{return *yytext;}
-[&,;\"] {return *yytext;}
+[&.,;\"] {return *yytext;}
 . 	{
 		yyerror(strcat(yytext, " : unknown charcter"));
 		exit(1);

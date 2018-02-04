@@ -46,22 +46,28 @@
 #define NODE_FUNC 51
 #define NODE_RET 52
 #define NODE_ARG 53
+#define NODE_FIELD 54
+
+#define NODE_INIT 61
+#define NODE_ALLOC 62
+#define NODE_FREE 63
+#define NODE_NULL 64
+#define NODE_ASSIGN_FIELD 65
 
 #define NODE_CONN 80
 #define NODE_BRKP 81
-#define NODE_TYPE 8s2
+#define NODE_TYPE 82
 
-#define reg_index int
-
-#define inttype 100
-#define strtype 101
-#define booltype 102
+union Constant{
+	int intval;
+	char *strval;
+};
 
 typedef struct tnode{
-	int val;
-	int type;
-	char *varname;
+	struct Typetable *type;
 	int nodetype;
+	char *name;
+	union Constant value;
 	struct Gsymbol *Gentry;
 	struct Lsymbol *Lentry;
 	struct tnode *arglist;
@@ -76,7 +82,7 @@ typedef struct loop{
 
 typedef struct Gsymbol{
 	char *name;
-	int type;
+	struct Typetable *type;
 	int size1, size2;
 	int binding;
 	int nodetype;
@@ -87,7 +93,7 @@ typedef struct Gsymbol{
 
 typedef struct Lsymbol{
 	char *name;
-	int type;
+	struct Typetable *type;
 	int binding;
 	int nodetype;
 	struct Lsymbol *next;
@@ -95,38 +101,63 @@ typedef struct Lsymbol{
 
 typedef struct Paramstruct{
 	char *name;
-	int type;
+	struct Typetable *type;
 	int binding;
 	int nodetype;
 	struct Paramstruct *next;
 }Paramstruct;
 
+typedef struct Typetable{
+	char *name;
+	int size;
+	struct Fieldlist *fields;
+	struct Typetable *next;
+}Typetable;
+
+typedef struct Fieldlist{
+	char *name;
+	int fieldIndex;
+	struct Typetable *type;
+	struct Fieldlist *next;
+}Fieldlist;
+
 int reg=-1, label=-1;
-int declType=inttype, PdeclType=inttype, functype=inttype;
-int binding=4096, flabel=0, lcount=0;
+struct Typetable *declType=NULL, *PdeclType=NULL, *functype=NULL;
+int binding=4096, flabel=0, lcount=0, count=0;
 FILE *target_file, *fp;
 struct loop *lHead=NULL;
+struct tnode *tptr=NULL, *tptr1=NULL;
 struct Gsymbol *Ghead=NULL, *Gtail=NULL;
 struct Lsymbol *Lhead=NULL, *Ltail=NULL;
 struct Paramstruct *Phead=NULL, *Ptail=NULL;
+struct Typetable *Thead=NULL, *Ttail=NULL;
+struct Fieldlist *Fhead=NULL, *Ftail=NULL;
 
-reg_index codeGen(struct tnode *t);
-reg_index getReg(void);
+int codeGen(struct tnode *t);
+int getReg(void);
 void freeReg(void);
 int getLabel(void);
-void typeCheck(int type1, int type2, int nodetype);
+void typeCheck(struct Typetable *type1, struct Typetable *type2, int nodetype);
 void idCheck(struct tnode *t, int nodetype);
 void print(struct tnode *t);
-struct tnode* createTree(int val, int type, char *varname, int nodetype, struct tnode *ptr1, struct tnode *ptr2, struct tnode *ptr3);
+struct tnode* createTree(struct Typetable *type, int nodetype, char *name, union Constant *value, struct tnode *arglist, struct tnode *ptr1, struct tnode *ptr2, struct tnode *ptr3);
 
 void insLoop(int br, int cn);
 void delLoop(void);
 
 struct Gsymbol* GLookup(char *name);
-void GInstall(char *name, int type, int size1, int size2, int nodetype, struct Paramstruct *paramlist);
+void GInstall(char *name, struct Typetable *type, int size1, int size2, int nodetype, struct Paramstruct *paramlist);
 
 struct Lsymbol* LLookup(char *name);
-void LInstall(char *name, int type, int nodetype);
+void LInstall(char *name, struct Typetable *type, int nodetype);
 
 struct Paramstruct* PLookup(char *name);
-void PInstall(char *name, int type, int nodetype);
+void PInstall(char *name, struct Typetable *type, int nodetype);
+
+void TypeTableCreate();
+struct Typetable* TLookup(char *name);
+void TInstall(char *name, int size, struct Fieldlist *fields);
+
+struct Fieldlist* FLookup(struct Typetable *type, char *name);
+void FInstall(struct Typetable *type, char *name);
+int getSize(struct Typetable *type);

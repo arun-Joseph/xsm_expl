@@ -1,0 +1,9 @@
+if [ $# -ne 0 ]
+then
+	./exprtree.exe $1
+	lex label.l
+	gcc lex.yy.c
+	./a.out
+	rm exprtree.xsm a.out
+fi
+./xsm -l library.lib -e code.xsm

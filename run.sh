@@ -5,5 +5,5 @@ gcc y.tab.c lex.yy.c -o exprtree.exe
 lex label.l
 gcc lex.yy.c
 ./a.out
-rm exprtree.xsm exprtree.exe a.out
+rm exprtree.xsm a.out
 ./xsm -l library.lib -e code.xsm

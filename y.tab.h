@@ -53,38 +53,44 @@ extern int yydebug;
     READ = 263,
     WRITE = 264,
     ASSIGN = 265,
-    DECL = 266,
-    ENDDECL = 267,
-    INT = 268,
-    STR = 269,
-    BRKP = 270,
-    MAIN = 271,
-    RETURN = 272,
-    IF = 273,
-    THEN = 274,
-    ELSE = 275,
-    ENDIF = 276,
-    WHILE = 277,
-    DO = 278,
-    ENDWHILE = 279,
-    BREAK = 280,
-    CONTINUE = 281,
-    REPEAT = 282,
-    UNTIL = 283,
-    PLUS = 284,
-    MINUS = 285,
-    MUL = 286,
-    DIV = 287,
-    MOD = 288,
-    LT = 289,
-    GT = 290,
-    LE = 291,
-    GE = 292,
-    NE = 293,
-    EQ = 294,
-    AND = 295,
-    OR = 296,
-    NOT = 297
+    INIT = 266,
+    ALLOC = 267,
+    FREE = 268,
+    TYPE = 269,
+    ENDTYPE = 270,
+    DECL = 271,
+    ENDDECL = 272,
+    INT = 273,
+    STR = 274,
+    BRKP = 275,
+    MAIN = 276,
+    RETURN = 277,
+    IF = 278,
+    THEN = 279,
+    ELSE = 280,
+    ENDIF = 281,
+    WHILE = 282,
+    DO = 283,
+    ENDWHILE = 284,
+    BREAK = 285,
+    CONTINUE = 286,
+    REPEAT = 287,
+    UNTIL = 288,
+    PLUS = 289,
+    MINUS = 290,
+    MUL = 291,
+    DIV = 292,
+    MOD = 293,
+    LT = 294,
+    GT = 295,
+    LE = 296,
+    GE = 297,
+    NE = 298,
+    EQ = 299,
+    AND = 300,
+    OR = 301,
+    NOT = 302,
+    NIL = 303
   };
 #endif
 /* Tokens.  */
@@ -96,38 +102,44 @@ extern int yydebug;
 #define READ 263
 #define WRITE 264
 #define ASSIGN 265
-#define DECL 266
-#define ENDDECL 267
-#define INT 268
-#define STR 269
-#define BRKP 270
-#define MAIN 271
-#define RETURN 272
-#define IF 273
-#define THEN 274
-#define ELSE 275
-#define ENDIF 276
-#define WHILE 277
-#define DO 278
-#define ENDWHILE 279
-#define BREAK 280
-#define CONTINUE 281
-#define REPEAT 282
-#define UNTIL 283
-#define PLUS 284
-#define MINUS 285
-#define MUL 286
-#define DIV 287
-#define MOD 288
-#define LT 289
-#define GT 290
-#define LE 291
-#define GE 292
-#define NE 293
-#define EQ 294
-#define AND 295
-#define OR 296
-#define NOT 297
+#define INIT 266
+#define ALLOC 267
+#define FREE 268
+#define TYPE 269
+#define ENDTYPE 270
+#define DECL 271
+#define ENDDECL 272
+#define INT 273
+#define STR 274
+#define BRKP 275
+#define MAIN 276
+#define RETURN 277
+#define IF 278
+#define THEN 279
+#define ELSE 280
+#define ENDIF 281
+#define WHILE 282
+#define DO 283
+#define ENDWHILE 284
+#define BREAK 285
+#define CONTINUE 286
+#define REPEAT 287
+#define UNTIL 288
+#define PLUS 289
+#define MINUS 290
+#define MUL 291
+#define DIV 292
+#define MOD 293
+#define LT 294
+#define GT 295
+#define LE 296
+#define GE 297
+#define NE 298
+#define EQ 299
+#define AND 300
+#define OR 301
+#define NOT 302
+#define NIL 303
 
 /* Value type.  */
 #if ! defined YYSTYPE && ! defined YYSTYPE_IS_DECLARED

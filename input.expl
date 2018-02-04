@@ -1,40 +1,74 @@
+type
+  bst{
+  int a;
+  bst left;
+  bst right;
+  }
+endtype
+
 decl
-	int swap(int *p, int *q), *ret(), b;
+  int in,opt;
+  bst insert(bst h, int key);
+  int inOrder(bst h); 
+  int preOrder(bst h);
+  int postOrder(bst h);           
 enddecl
 
-int swap(int *p, int *q){
-	decl
-		int t;
-	enddecl
-	begin
-		t=*p;
-		*p=*q;
-		*q=t;
-		return 0;
-	end
+bst insert(bst h, int key)
+{
+  decl
+  enddecl
+  begin
+	h=alloc();
+
+    return h;
+  end
 }
 
-int *ret(){
-	decl
-	enddecl
-	begin
-		b=10;
-		return &b;
-	end
+int inOrder(bst h){
+  decl
+  enddecl
+  begin
+    
+  return 0;
+  end
 }
 
-int main() {
-	decl
-		int a, b, k, *l;
-	enddecl
-	begin
-		a=1;
-		b=2;
-		k=swap(&a, &b);
-		write(a);
-		write(b);
-		l=ret();
-		write(*l);
-		return 0;
-	end
+int preOrder(bst h){
+  decl
+  enddecl
+  begin
+        return 1;
+  end
+}
+
+int postOrder(bst h){
+  decl
+  enddecl
+  begin
+  return 1;
+  end
+}
+
+int main()
+{ 
+  decl
+  int val,flag;
+  bst Root;
+  enddecl
+
+  begin
+    val = initialize();
+    Root = null;
+
+    read(val);
+
+    while(val!=0) do
+      Root = insert(Root,val);
+      read(val);
+    endwhile;
+
+  
+  return 9;
+  end
 }
