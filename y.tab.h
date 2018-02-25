@@ -65,32 +65,38 @@ extern int yydebug;
     BRKP = 275,
     MAIN = 276,
     RETURN = 277,
-    IF = 278,
-    THEN = 279,
-    ELSE = 280,
-    ENDIF = 281,
-    WHILE = 282,
-    DO = 283,
-    ENDWHILE = 284,
-    BREAK = 285,
-    CONTINUE = 286,
-    REPEAT = 287,
-    UNTIL = 288,
-    PLUS = 289,
-    MINUS = 290,
-    MUL = 291,
-    DIV = 292,
-    MOD = 293,
-    LT = 294,
-    GT = 295,
-    LE = 296,
-    GE = 297,
-    NE = 298,
-    EQ = 299,
-    AND = 300,
-    OR = 301,
-    NOT = 302,
-    NIL = 303
+    CLASS = 278,
+    ENDCLASS = 279,
+    EXTENDS = 280,
+    NEW = 281,
+    DELETE = 282,
+    SELF = 283,
+    IF = 284,
+    THEN = 285,
+    ELSE = 286,
+    ENDIF = 287,
+    WHILE = 288,
+    DO = 289,
+    ENDWHILE = 290,
+    BREAK = 291,
+    CONTINUE = 292,
+    REPEAT = 293,
+    UNTIL = 294,
+    PLUS = 295,
+    MINUS = 296,
+    MUL = 297,
+    DIV = 298,
+    MOD = 299,
+    LT = 300,
+    GT = 301,
+    LE = 302,
+    GE = 303,
+    NE = 304,
+    EQ = 305,
+    AND = 306,
+    OR = 307,
+    NOT = 308,
+    NIL = 309
   };
 #endif
 /* Tokens.  */
@@ -114,32 +120,38 @@ extern int yydebug;
 #define BRKP 275
 #define MAIN 276
 #define RETURN 277
-#define IF 278
-#define THEN 279
-#define ELSE 280
-#define ENDIF 281
-#define WHILE 282
-#define DO 283
-#define ENDWHILE 284
-#define BREAK 285
-#define CONTINUE 286
-#define REPEAT 287
-#define UNTIL 288
-#define PLUS 289
-#define MINUS 290
-#define MUL 291
-#define DIV 292
-#define MOD 293
-#define LT 294
-#define GT 295
-#define LE 296
-#define GE 297
-#define NE 298
-#define EQ 299
-#define AND 300
-#define OR 301
-#define NOT 302
-#define NIL 303
+#define CLASS 278
+#define ENDCLASS 279
+#define EXTENDS 280
+#define NEW 281
+#define DELETE 282
+#define SELF 283
+#define IF 284
+#define THEN 285
+#define ELSE 286
+#define ENDIF 287
+#define WHILE 288
+#define DO 289
+#define ENDWHILE 290
+#define BREAK 291
+#define CONTINUE 292
+#define REPEAT 293
+#define UNTIL 294
+#define PLUS 295
+#define MINUS 296
+#define MUL 297
+#define DIV 298
+#define MOD 299
+#define LT 300
+#define GT 301
+#define LE 302
+#define GE 303
+#define NE 304
+#define EQ 305
+#define AND 306
+#define OR 307
+#define NOT 308
+#define NIL 309
 
 /* Value type.  */
 #if ! defined YYSTYPE && ! defined YYSTYPE_IS_DECLARED

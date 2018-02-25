@@ -22,6 +22,8 @@ int codeGen(struct tnode *t){
 	struct Paramstruct *Ptemp;
 	struct Typetable *Ttemp;
 	struct Fieldlist *Ftemp;
+	struct Classtable *Ctemp;
+	struct Memberfunclist *Mtemp;
 	struct tnode *temp;
 
 	if(t==NULL)
@@ -66,6 +68,44 @@ int codeGen(struct tnode *t){
 			break;
 		case NODE_FIELD:
 			r1=getReg();
+			if(t->ptr1==NULL){
+				Ctemp=classType;
+				Ptemp=Phead;
+				r3=3;
+				while(Ptemp!=NULL){
+					r3++;
+					Ptemp=Ptemp->next;
+				}
+				fprintf(target_file, "MOV R%d, BP\n", r1);
+				fprintf(target_file, "SUB R%d, %d\n", r1, r3+1);
+				fprintf(target_file, "MOV R%d, [R%d]\n", r1, r1);
+
+				Ftemp=Fhead;
+				r3=0;
+				while(strcmp(Ftemp->name, t->ptr2->name)){
+					r3++;
+					if(Ftemp->type==NULL)
+						r3++;
+					Ftemp=Ftemp->next;
+				}
+				fprintf(target_file, "ADD R%d, %d\n", r1, r3);
+				fprintf(target_file, "MOV R%d, [R%d]\n", r1, r1);
+				Ttemp=Ftemp->type;
+
+				temp=t->ptr3;
+				while(temp!=NULL){
+					Ftemp=FLookup(Ttemp, temp->ptr2->name);
+					if(Ftemp==NULL){
+						printf("Unknown identifier in FIELD: %s\n", temp->ptr2->name);
+						exit(1);
+					}
+					fprintf(target_file, "ADD R%d, %d\n", r1, Ftemp->fieldIndex);
+					fprintf(target_file, "MOV R%d, [R%d]\n", r1, r1);
+					Ttemp=Ftemp->type;
+					temp=temp->ptr3;
+				}
+				break;
+			}
 			Ltemp=LLookup(t->ptr1->name);
 			Gtemp=GLookup(t->ptr1->name);
 			Ptemp=PLookup(t->ptr1->name);
@@ -236,6 +276,287 @@ int codeGen(struct tnode *t){
 			fprintf(target_file, "ADD R%d, %d\n", r1, r3+1);
 			fprintf(target_file, "MOV R%d, [R%d]\n", r1, r1);
 			break;
+		case NODE_FUNC_CLASS:
+			Gtemp=GLookup(t->ptr1->name);
+			Ctemp=Gtemp->cptr;
+			Mtemp=Class_MLookup(Ctemp, t->ptr2->name);
+			Ptemp=Mtemp->paramlist;
+
+			r1=0;
+			while(Ptemp!=NULL){
+				r1++;
+				Ptemp=Ptemp->next;
+			}
+
+			r2=0;
+			temp=t->arglist;
+			while(temp!=NULL){
+				r2++;
+				temp=temp->ptr2;
+			}
+
+			if(r1!=r2){
+				printf("Incorrect no. of arguments: %s.%s\n", t->ptr1->name, t->ptr2->name);
+				exit(1);
+			}
+
+			r1=0;
+			r2--;
+			Ptemp=Mtemp->paramlist;
+			while(Ptemp!=NULL){
+				r3=0;
+				temp=t->arglist;
+				while(r3<r2){
+					r3++;
+					temp=temp->ptr2;
+				}
+				if(Ptemp->type!=temp->ptr1->type){
+					printf("Incorrect paramter: %s\n", Ptemp->name);
+					exit(1);
+				}
+				r2--;
+				Ptemp=Ptemp->next;
+			}
+			for(r2=0;r2<=reg;r2++)
+				fprintf(target_file, "PUSH R%d\n", r2);
+			reg=-1;
+			r1=getReg();
+			fprintf(target_file, "MOV R%d, [%d]\n", r1, Gtemp->binding);
+			fprintf(target_file, "PUSH R%d\n", r1);
+			fprintf(target_file, "MOV R%d, [%d]\n", r1, Gtemp->binding+1);
+			fprintf(target_file, "PUSH R%d\n", r1);
+			freeReg();
+			r1=codeGen(t->arglist);
+			r1=getReg();
+			fprintf(target_file, "PUSH R%d\n", r1);
+			fprintf(target_file, "MOV R%d, [%d]\n", r1, Gtemp->binding+1);
+			fprintf(target_file, "ADD R%d, %d\n", r1, Mtemp->Funcposition);
+			fprintf(target_file, "MOV R%d, [R%d]\n", r1, r1);
+			fprintf(target_file, "CALL R%d\n", r1);
+			fprintf(target_file, "POP R%d\n", r1);
+			freeReg();
+			r3=0;
+			r1=getReg();
+			Ptemp=Mtemp->paramlist;
+			while(Ptemp!=NULL){
+				fprintf(target_file, "POP R%d\n", r1);
+				r3++;
+				Ptemp=Ptemp->next;
+			}
+			fprintf(target_file, "SUB SP, 2\n");
+			r3+=2;
+			reg=r2;
+			freeReg();
+			for(r2--;r2>=0;r2--){
+				fprintf(target_file, "POP R%d\n", r2);
+				r3++;
+			}
+			r1=getReg();
+			fprintf(target_file, "MOV R%d, SP\n", r1);
+			fprintf(target_file, "ADD R%d, %d\n", r1, r3+1);
+			fprintf(target_file, "MOV R%d, [R%d]\n", r1, r1);
+			break;
+		case NODE_FUNC_CLASS2:
+			Ctemp=classType;
+			Mtemp=Mhead;
+			l2=0;
+			while(strcmp(Mtemp->name, t->ptr2->name)){
+				l2++;
+				Mtemp=Mtemp->next;
+			}
+			Ptemp=Mtemp->paramlist;
+
+			r1=0;
+			while(Ptemp!=NULL){
+				r1++;
+				Ptemp=Ptemp->next;
+			}
+
+			r2=0;
+			temp=t->arglist;
+			while(temp!=NULL){
+				r2++;
+				temp=temp->ptr2;
+			}
+
+			if(r1!=r2){
+				printf("Incorrect no. of arguments: self.%s\n", t->ptr2->name);
+				exit(1);
+			}
+			
+			Ptemp=Phead;
+			l1=0;
+			while(Ptemp!=NULL){
+				l1++;
+				Ptemp=Ptemp->next;
+			}
+
+			r1=0;
+			r2--;
+			Ptemp=Mtemp->paramlist;
+			while(Ptemp!=NULL){
+				r3=0;
+				temp=t->arglist;
+				while(r3<r2){
+					r3++;
+					temp=temp->ptr2;
+				}
+				if(Ptemp->type!=temp->ptr1->type){
+					printf("Incorrect paramter: %s\n", Ptemp->name);
+					exit(1);
+				}
+				r2--;
+				Ptemp=Ptemp->next;
+			}
+			for(r2=0;r2<=reg;r2++)
+				fprintf(target_file, "PUSH R%d\n", r2);
+			reg=-1;
+			r1=getReg();
+			r3=getReg();
+			fprintf(target_file, "MOV R%d, BP\n", r1);
+			fprintf(target_file, "SUB R%d, %d\n", r1, l1+4);
+			fprintf(target_file, "MOV R%d, [R%d]\n", r3, r1);
+			fprintf(target_file, "PUSH R%d\n", r3);
+			fprintf(target_file, "INR R%d\n", r1);
+			fprintf(target_file, "MOV R%d, [R%d]\n", r3, r1);
+			fprintf(target_file, "PUSH R%d\n", r3);
+			freeReg();
+			freeReg();
+			r1=codeGen(t->arglist);
+			r1=getReg();
+			fprintf(target_file, "PUSH R%d\n", r1);
+			fprintf(target_file, "MOV R%d, BP\n", r1);
+			fprintf(target_file, "SUB R%d, %d\n", r1, l1+3);
+			fprintf(target_file, "MOV R%d, [R%d]\n", r1, r1);
+			fprintf(target_file, "ADD R%d, %d\n", r1, l2);
+			fprintf(target_file, "MOV R%d, [R%d]\n", r1, r1);
+			fprintf(target_file, "CALL R%d\n", r1);
+			fprintf(target_file, "POP R%d\n", r1);
+			freeReg();
+			r3=0;
+			r1=getReg();
+			Ptemp=Mtemp->paramlist;
+			while(Ptemp!=NULL){
+				fprintf(target_file, "POP R%d\n", r1);
+				r3++;
+				Ptemp=Ptemp->next;
+			}
+			fprintf(target_file, "SUB SP, 2\n");
+			r3+=2;
+			reg=r2;
+			freeReg();
+			for(r2--;r2>=0;r2--){
+				fprintf(target_file, "POP R%d\n", r2);
+				r3++;
+			}
+			r1=getReg();
+			fprintf(target_file, "MOV R%d, SP\n", r1);
+			fprintf(target_file, "ADD R%d, %d\n", r1, r3+1);
+			fprintf(target_file, "MOV R%d, [R%d]\n", r1, r1);
+			break;
+		case NODE_FUNC_CLASS3:
+			Ctemp=classType;
+			Ftemp=Fhead;
+			l2=0;
+			while(strcmp(Ftemp->name, t->ptr2->name)){
+				l2++;
+				Ftemp=Ftemp->next;
+			}
+			Mtemp=Class_MLookup(Ftemp->Ctype, t->ptr3->name);
+			Ptemp=Mtemp->paramlist;
+
+			r1=0;
+			while(Ptemp!=NULL){
+				r1++;
+				Ptemp=Ptemp->next;
+			}
+
+			r2=0;
+			temp=t->arglist;
+			while(temp!=NULL){
+				r2++;
+				temp=temp->ptr2;
+			}
+
+			if(r1!=r2){
+				printf("Incorrect no. of arguments: self.%s.%s\n", t->ptr2->name, t->ptr3->name);
+				exit(1);
+			}
+			
+			Ptemp=Phead;
+			l1=0;
+			while(Ptemp!=NULL){
+				l1++;
+				Ptemp=Ptemp->next;
+			}
+
+			r1=0;
+			r2--;
+			Ptemp=Mtemp->paramlist;
+			while(Ptemp!=NULL){
+				r3=0;
+				temp=t->arglist;
+				while(r3<r2){
+					r3++;
+					temp=temp->ptr2;
+				}
+				if(Ptemp->type!=temp->ptr1->type){
+					printf("Incorrect paramter: %s\n", Ptemp->name);
+					exit(1);
+				}
+				r2--;
+				Ptemp=Ptemp->next;
+			}
+			for(r2=0;r2<=reg;r2++)
+				fprintf(target_file, "PUSH R%d\n", r2);
+			reg=-1;
+			r1=getReg();
+			r3=getReg();
+			fprintf(target_file, "MOV R%d, BP\n", r1);
+			fprintf(target_file, "SUB R%d, %d\n", r1, l1+4);
+			fprintf(target_file, "MOV R%d, [R%d]\n", r1, r1);
+			fprintf(target_file, "ADD R%d, %d\n", r1, l2);
+			fprintf(target_file, "MOV R%d, [R%d]\n", r3, r1);
+			fprintf(target_file, "PUSH R%d\n", r3);
+			fprintf(target_file, "INR R%d\n", r1);
+			fprintf(target_file, "MOV R%d, [R%d]\n", r3, r1);
+			fprintf(target_file, "PUSH R%d\n", r3);
+			freeReg();
+			freeReg();
+			r1=codeGen(t->arglist);
+			r1=getReg();
+			fprintf(target_file, "PUSH R%d\n", r1);
+			fprintf(target_file, "MOV R%d, BP\n", r1);
+			fprintf(target_file, "SUB R%d, %d\n", r1, l1+4);
+			fprintf(target_file, "MOV R%d, [R%d]\n", r1, r1);
+			fprintf(target_file, "ADD R%d, %d\n", r1, l2+1);
+			fprintf(target_file, "MOV R%d, [R%d]\n", r1, r1);
+			fprintf(target_file, "ADD R%d, %d\n", r1, Mtemp->Funcposition);
+			fprintf(target_file, "MOV R%d, [R%d]\n", r1, r1);
+			fprintf(target_file, "CALL R%d\n", r1);
+			fprintf(target_file, "POP R%d\n", r1);
+			freeReg();
+			r3=0;
+			r1=getReg();
+			Ptemp=Mtemp->paramlist;
+			while(Ptemp!=NULL){
+				fprintf(target_file, "POP R%d\n", r1);
+				r3++;
+				Ptemp=Ptemp->next;
+			}
+			fprintf(target_file, "SUB SP, 2\n");
+			r3+=2;
+			reg=r2;
+			freeReg();
+			for(r2--;r2>=0;r2--){
+				fprintf(target_file, "POP R%d\n", r2);
+				r3++;
+			}
+			r1=getReg();
+			fprintf(target_file, "MOV R%d, SP\n", r1);
+			fprintf(target_file, "ADD R%d, %d\n", r1, r3+1);
+			fprintf(target_file, "MOV R%d, [R%d]\n", r1, r1);
+			break;
 		case NODE_ARG:
 			r1=codeGen(t->ptr1);
 			fprintf(target_file, "PUSH R%d\n", r1);
@@ -384,6 +705,14 @@ int codeGen(struct tnode *t){
 				printf("Unknown variable: %s\n", t->name);
 				exit(1);
 			}
+			if(t->ptr3!=NULL){
+				Ctemp=CLookup(t->ptr3->name);
+				if(Ctemp==NULL){
+					printf("Unknown class: %s\n", t->ptr3->name);
+					exit(1);
+				}
+				fprintf(target_file, "MOV [%d], %d\n", Gtemp->binding+1, 4096+8*Ctemp->Class_index);
+			}
 			freeReg();
 			freeReg();
 			break;
@@ -391,6 +720,68 @@ int codeGen(struct tnode *t){
 			r2=codeGen(t->ptr2);
 
 			r1=getReg();
+
+			if(t->ptr1->ptr1==NULL){
+				Ctemp=classType;
+				Ptemp=Phead;
+				r3=3;
+				while(Ptemp!=NULL){
+					r3++;
+					Ptemp=Ptemp->next;
+				}
+				fprintf(target_file, "MOV R%d, BP\n", r1);
+				fprintf(target_file, "SUB R%d, %d\n", r1, r3+1);
+				fprintf(target_file, "MOV R%d, [R%d]\n", r1, r1);
+
+				Ftemp=Fhead;
+				r3=0;
+				while(strcmp(Ftemp->name, t->ptr1->ptr2->name)){
+					r3++;
+					if(Ftemp->type==NULL)
+						r3++;
+					Ftemp=Ftemp->next;
+				}
+				fprintf(target_file, "ADD R%d, %d\n", r1, r3);
+				Ttemp=Ftemp->type;
+
+				if(t->ptr1->ptr3!=NULL){
+					fprintf(target_file, "MOV R%d, [R%d]\n", r1, r1);
+					temp=t->ptr1->ptr3;
+					while(temp->ptr3!=NULL){
+						Ftemp=FLookup(Ttemp, temp->ptr2->name);
+						if(Ftemp==NULL){
+							printf("Unknown identifier in FIELD: %s\n", temp->ptr2->name);
+							exit(1);
+						}
+						fprintf(target_file, "ADD R%d, %d\n", r1, Ftemp->fieldIndex);
+						fprintf(target_file, "MOV R%d, [R%d]\n", r1, r1);
+						Ttemp=Ftemp->type;
+						temp=temp->ptr3;
+					}
+					Ftemp=FLookup(Ttemp, temp->ptr2->name);
+					if(Ftemp==NULL){
+						printf("Unknown identifier in FIELD: %s\n", temp->ptr2->name);
+						exit(1);
+					}
+					fprintf(target_file, "ADD R%d, %d\n", r1, Ftemp->fieldIndex);
+				}
+
+				fprintf(target_file, "MOV [R%d], R%d\n", r1, r2);
+
+				if(t->ptr3!=NULL){
+					Ctemp=CLookup(t->ptr3->name);
+					if(Ctemp==NULL){
+						printf("Unknown class: %s\n", t->ptr3->name);
+						exit(1);
+					}
+					fprintf(target_file, "INR R%d\n", r1);
+					fprintf(target_file, "MOV [R%d], %d\n", r1, 4096+8*Ctemp->Class_index);
+				}
+				freeReg();
+				freeReg();
+				break;
+			}
+
 			Ltemp=LLookup(t->ptr1->ptr1->name);
 			Gtemp=GLookup(t->ptr1->ptr1->name);
 			Ptemp=PLookup(t->ptr1->ptr1->name);
@@ -560,16 +951,9 @@ int codeGen(struct tnode *t){
 			r1=getReg();
 			fprintf(target_file, "MOV R%d, \"Heapset\"\n", r1);
 			fprintf(target_file, "PUSH R%d\n", r1);
-			fprintf(target_file, "PUSH R%d\n", r1);
-			fprintf(target_file, "PUSH R%d\n", r1);
-			fprintf(target_file, "PUSH R%d\n", r1);
-			fprintf(target_file, "PUSH R%d\n", r1);
+			fprintf(target_file, "ADD SP, 4\n");
 			fprintf(target_file, "CALL 0\n");
-			fprintf(target_file, "POP R%d\n", r1);
-			fprintf(target_file, "POP R%d\n", r1);
-			fprintf(target_file, "POP R%d\n", r1);
-			fprintf(target_file, "POP R%d\n", r1);
-			fprintf(target_file, "POP R%d\n", r1);
+			fprintf(target_file, "SUB SP, 5\n");
 			fprintf(target_file, "MOV R%d, 0\n", r1);
 			break;
 		case NODE_ALLOC:
@@ -579,15 +963,10 @@ int codeGen(struct tnode *t){
 			fprintf(target_file, "PUSH R%d\n", r2);
 			fprintf(target_file, "MOV R%d, 8\n", r2);
 			fprintf(target_file, "PUSH R%d\n", r2);
-			fprintf(target_file, "PUSH R%d\n", r2);
-			fprintf(target_file, "PUSH R%d\n", r2);
-			fprintf(target_file, "PUSH R%d\n", r2);
+			fprintf(target_file, "ADD SP, 3\n");
 			fprintf(target_file, "CALL 0\n");
 			fprintf(target_file, "POP R%d\n", r1);
-			fprintf(target_file, "POP R%d\n", r2);
-			fprintf(target_file, "POP R%d\n", r2);
-			fprintf(target_file, "POP R%d\n", r2);
-			fprintf(target_file, "POP R%d\n", r2);
+			fprintf(target_file, "SUB SP, 4\n");
 			freeReg();
 			break;
 		case NODE_FREE:
@@ -596,15 +975,9 @@ int codeGen(struct tnode *t){
 			fprintf(target_file, "MOV R%d, \"Free\"\n", r2);
 			fprintf(target_file, "PUSH R%d\n", r2);
 			fprintf(target_file, "PUSH R%d\n", r1);
-			fprintf(target_file, "PUSH R%d\n", r2);
-			fprintf(target_file, "PUSH R%d\n", r2);
-			fprintf(target_file, "PUSH R%d\n", r2);
+			fprintf(target_file, "ADD SP, 3\n");
 			fprintf(target_file, "CALL 0\n");
-			fprintf(target_file, "POP R%d\n", r2);
-			fprintf(target_file, "POP R%d\n", r2);
-			fprintf(target_file, "POP R%d\n", r2);
-			fprintf(target_file, "POP R%d\n", r2);
-			fprintf(target_file, "POP R%d\n", r2);
+			fprintf(target_file, "SUB SP, 5\n");
 			freeReg();
 			freeReg();
 			break;
@@ -684,14 +1057,9 @@ int codeGen(struct tnode *t){
 			fprintf(target_file, "MOV R%d, -2\n", r2);
 			fprintf(target_file, "PUSH R%d\n", r2);
 			fprintf(target_file, "PUSH R%d\n", r1);
-			fprintf(target_file, "PUSH R%d\n", r2);
-			fprintf(target_file, "PUSH R%d\n", r2);
+			fprintf(target_file, "ADD SP, 2\n");
 			fprintf(target_file, "CALL 0\n");
-			fprintf(target_file, "POP R%d\n", r2);
-			fprintf(target_file, "POP R%d\n", r2);
-			fprintf(target_file, "POP R%d\n", r2);
-			fprintf(target_file, "POP R%d\n", r2);
-			fprintf(target_file, "POP R%d\n", r2);
+			fprintf(target_file, "SUB SP, 5\n");
 			freeReg();
 			freeReg();
 			break;
@@ -725,16 +1093,10 @@ int codeGen(struct tnode *t){
 			fprintf(target_file, "PUSH R%d\n", r2);
 			fprintf(target_file, "MOV R%d, -1\n", r2);
 			fprintf(target_file, "PUSH R%d\n", r2);
-			fprintf(target_file, "MOV R%d, R%d\n", r2, r1);
-			fprintf(target_file, "PUSH R%d\n", r2);
-			fprintf(target_file, "PUSH R%d\n", r2);
-			fprintf(target_file, "PUSH R%d\n", r2);
+			fprintf(target_file, "PUSH R%d\n", r1);
+			fprintf(target_file, "ADD SP, 2\n");
 			fprintf(target_file, "CALL 0\n");
-			fprintf(target_file, "POP R%d\n", r2);
-			fprintf(target_file, "POP R%d\n", r2);
-			fprintf(target_file, "POP R%d\n", r2);
-			fprintf(target_file, "POP R%d\n", r2);
-			fprintf(target_file, "POP R%d\n", r2);
+			fprintf(target_file, "SUB SP, 5\n");
 			freeReg();
 			break;
 		case NODE_READ_ARRAY:
@@ -750,16 +1112,10 @@ int codeGen(struct tnode *t){
 			fprintf(target_file, "PUSH R%d\n", r2);
 			fprintf(target_file, "MOV R%d, -1\n", r2);
 			fprintf(target_file, "PUSH R%d\n", r2);
-			fprintf(target_file, "MOV R%d, R%d\n", r2, r1);
-			fprintf(target_file, "PUSH R%d\n", r2);
-			fprintf(target_file, "PUSH R%d\n", r2);
-			fprintf(target_file, "PUSH R%d\n", r2);
+			fprintf(target_file, "PUSH R%d\n", r1);
+			fprintf(target_file, "ADD SP, 2\n");
 			fprintf(target_file, "CALL 0\n");
-			fprintf(target_file, "POP R%d\n", r2);
-			fprintf(target_file, "POP R%d\n", r2);
-			fprintf(target_file, "POP R%d\n", r2);
-			fprintf(target_file, "POP R%d\n", r2);
-			fprintf(target_file, "POP R%d\n", r2);
+			fprintf(target_file, "SUB SP, 5\n");
 			freeReg();
 			freeReg();
 			break;
@@ -778,16 +1134,10 @@ int codeGen(struct tnode *t){
 			fprintf(target_file, "PUSH R%d\n", r2);
 			fprintf(target_file, "MOV R%d, -1\n", r2);
 			fprintf(target_file, "PUSH R%d\n", r2);
-			fprintf(target_file, "MOV R%d, R%d\n", r2, r1);
-			fprintf(target_file, "PUSH R%d\n", r2);
-			fprintf(target_file, "PUSH R%d\n", r2);
-			fprintf(target_file, "PUSH R%d\n", r2);
+			fprintf(target_file, "PUSH R%d\n", r1);
+			fprintf(target_file, "ADD SP, 2\n");
 			fprintf(target_file, "CALL 0\n");
-			fprintf(target_file, "POP R%d\n", r2);
-			fprintf(target_file, "POP R%d\n", r2);
-			fprintf(target_file, "POP R%d\n", r2);
-			fprintf(target_file, "POP R%d\n", r2);
-			fprintf(target_file, "POP R%d\n", r2);
+			fprintf(target_file, "SUB SP, 5\n");
 			freeReg();
 			freeReg();
 			break;
@@ -823,16 +1173,72 @@ int codeGen(struct tnode *t){
 			fprintf(target_file, "PUSH R%d\n", r2);
 			fprintf(target_file, "MOV R%d, -1\n", r2);
 			fprintf(target_file, "PUSH R%d\n", r2);
-			fprintf(target_file, "MOV R%d, R%d\n", r2, r1);
-			fprintf(target_file, "PUSH R%d\n", r2);
-			fprintf(target_file, "PUSH R%d\n", r2);
-			fprintf(target_file, "PUSH R%d\n", r2);
+			fprintf(target_file, "PUSH R%d\n", r1);
+			fprintf(target_file, "ADD SP, 2\n");
 			fprintf(target_file, "CALL 0\n");
-			fprintf(target_file, "POP R%d\n", r2);
-			fprintf(target_file, "POP R%d\n", r2);
-			fprintf(target_file, "POP R%d\n", r2);
-			fprintf(target_file, "POP R%d\n", r2);
-			fprintf(target_file, "POP R%d\n", r2);
+			fprintf(target_file, "SUB SP, 5\n");
+			freeReg();
+			freeReg();
+			break;
+		case NODE_READ_TYPE:
+			r1=getReg();
+			Ltemp=LLookup(t->ptr1->ptr1->name);
+			Gtemp=GLookup(t->ptr1->ptr1->name);
+			Ptemp=PLookup(t->ptr1->ptr1->name);
+			if(Ltemp!=NULL){
+				Ttemp=Ltemp->type;
+				fprintf(target_file, "MOV R%d, BP\n", r1);
+				fprintf(target_file, "ADD R%d, %d\n", r1, Ltemp->binding);
+				fprintf(target_file, "MOV R%d, [R%d]\n", r1, r1);
+			}
+			else if(Ptemp!=NULL){
+				Ptemp=Phead;
+				r3=3;
+				while(strcmp(Ptemp->name, t->ptr1->ptr1->name)){
+					r3++;
+					Ptemp=Ptemp->next;
+				}
+				Ttemp=Ptemp->type;
+				fprintf(target_file, "MOV R%d, BP\n", r1);
+				fprintf(target_file, "SUB R%d, %d\n", r1, r3);
+				fprintf(target_file, "MOV R%d, [R%d]\n", r1, r1);
+			}
+			else if(Gtemp!=NULL){
+				Ttemp=Gtemp->type;
+				fprintf(target_file, "MOV R%d, [%d]\n", r1, Gtemp->binding);
+			}
+			else{
+				printf("Unknown variable: %s\n", t->ptr1->ptr1->name);
+				exit(1);
+			}
+			temp=t->ptr1;
+			while(temp->ptr3!=NULL){
+				Ftemp=FLookup(Ttemp, temp->ptr2->name);
+				if(Ftemp==NULL){
+					printf("Unknown identifier in FIELD: %s\n", temp->ptr2->name);
+					exit(1);
+				}
+				fprintf(target_file, "ADD R%d, %d\n", r1, Ftemp->fieldIndex);
+				fprintf(target_file, "MOV R%d, [R%d]\n", r1, r1);
+				Ttemp=Ftemp->type;
+				temp=temp->ptr3;
+			}
+			Ftemp=FLookup(Ttemp, temp->ptr2->name);
+			if(Ftemp==NULL){
+				printf("Unknown identifier in FIELD: %s\n", temp->ptr2->name);
+				exit(1);
+			}
+			fprintf(target_file, "ADD R%d, %d\n", r1, Ftemp->fieldIndex);
+
+			r2=getReg();
+			fprintf(target_file, "MOV R%d, \"Read\"\n", r2);
+			fprintf(target_file, "PUSH R%d\n", r2);
+			fprintf(target_file, "MOV R%d, -1\n", r2);
+			fprintf(target_file, "PUSH R%d\n", r2);
+			fprintf(target_file, "PUSH R%d\n", r1);
+			fprintf(target_file, "ADD SP, 2\n");
+			fprintf(target_file, "CALL 0\n");
+			fprintf(target_file, "SUB SP, 5\n");
 			freeReg();
 			freeReg();
 			break;
@@ -848,6 +1254,7 @@ int codeGen(struct tnode *t){
 }
 
 void typeCheck(struct Typetable *type1, struct Typetable *type2, int nodetype){
+	return;
 	switch(nodetype){
 		case NODE_ASSIGN:
 			if(type2==TLookup("type") && (type1==TLookup("integer") || type1==TLookup("string"))){
@@ -864,7 +1271,7 @@ void typeCheck(struct Typetable *type1, struct Typetable *type2, int nodetype){
 		case NODE_MUL:
 		case NODE_DIV:
 		case NODE_MOD:
-			if((type1!=TLookup("integer"))||(type2!=TLookup("integer"))){
+			if((type1!=TLookup("integer")) || (type2!=TLookup("integer"))){
 				printf("Arithmetic Operator Type Mismatch\n");
 				exit(1);
 			}
@@ -889,8 +1296,8 @@ void typeCheck(struct Typetable *type1, struct Typetable *type2, int nodetype){
 		case NODE_AND:
 		case NODE_OR:
 		case NODE_NOT:
-			if(((type1!=TLookup("integer"))&&(type1!=TLookup("boolean")))
-				||((type2!=TLookup("integer"))&&(type2!=TLookup("boolean")))){
+			if(((type1!=TLookup("integer")) && (type1!=TLookup("boolean")))
+				||((type2!=TLookup("integer")) && (type2!=TLookup("boolean")))){
 				printf("Logical Operator Type Mismatch\n");
 				exit(1);
 			}
@@ -906,12 +1313,19 @@ void typeCheck(struct Typetable *type1, struct Typetable *type2, int nodetype){
 				printf("Matrix Type Mismatch\n");
 				exit(1);
 			}
+		case NODE_FIELD:
+			if(type1!=TLookup("integer") && (type1!=TLookup("string"))){
+				printf("Field Type Mismatch\n");
+				exit(1);
+			}
 			break;
+		
 	}
 }
 
 void idCheck(struct tnode *t, int nodetype){
 	int inodetype;
+	return;
 	struct Lsymbol *Ltemp=LLookup(t->name);
 	struct Gsymbol *Gtemp=GLookup(t->name);
 	struct Paramstruct *Ptemp=PLookup(t->name);
@@ -952,8 +1366,6 @@ void idCheck(struct tnode *t, int nodetype){
 }
 
 void evaluate(){
-	int i, r1, r2, r3, l1, l2;
-	fprintf(target_file, "0\n2056\n0\n0\n0\n0\n0\n0\n");
 	fprintf(target_file, "MOV SP, %d\n", binding-1);
 	fprintf(target_file, "MOV BP, %d\n", binding);
 	fprintf(target_file, "PUSH R0\n");
@@ -970,7 +1382,7 @@ struct tnode* createTree(struct Typetable *type, int nodetype, char *name, union
 	temp->type=type;
 	temp->nodetype=nodetype;
 	temp->arglist=arglist;
-	
+
 	switch(nodetype){
 		case NODE_NUM:
 			temp->value.intval=value->intval;
@@ -1057,7 +1469,7 @@ struct Gsymbol* GLookup(char *name){
 	return NULL;
 }
 
-void GInstall(char *name, struct Typetable *type, int size1, int size2, int nodetype, struct Paramstruct *paramlist){
+void GInstall(char *name, struct Typetable *type, struct Classtable *cptr, int size1, int size2, int nodetype, struct Paramstruct *paramlist){
 	struct Gsymbol *temp;
 	temp=GLookup(name);
 	if(temp!=NULL){
@@ -1069,11 +1481,15 @@ void GInstall(char *name, struct Typetable *type, int size1, int size2, int node
 	temp->name=malloc(sizeof(name));
 	strcpy(temp->name, name);
 	temp->type=type;
+	temp->cptr=cptr;
 	temp->size1=size1;
 	temp->size2=size2;
 	temp->nodetype=nodetype;
 	temp->paramlist=paramlist;
 	temp->next=NULL;
+
+	if(type==NULL)
+		temp->size1=2;
 
 	if(nodetype=NODE_FUNC)
 		temp->flabel=flabel++;
@@ -1116,7 +1532,7 @@ void LInstall(char *name, struct Typetable *type, int nodetype){
 	strcpy(temp->name, name);
 	temp->type=type;
 	temp->nodetype=nodetype;
-	temp->binding=binding++;
+	temp->binding=lbind++;
 	temp->next=NULL;
 
 	if(Lhead==NULL)
@@ -1164,8 +1580,10 @@ void TypeTableCreate(){
 	TInstall("integer", 1, NULL);
 	TInstall("string", 1, NULL);
 	TInstall("boolean", 1, NULL);
+	TInstall("address", 1, NULL);
 	TInstall("void", 0, NULL);
 	TInstall("type", 0, NULL);
+	TInstall("class", 0, NULL);
 }
 
 struct Typetable *TLookup(char *name){
@@ -1242,6 +1660,7 @@ void FInstall(struct Typetable *type, char *name){
 	temp->name=malloc(sizeof(name));
 	strcpy(temp->name, name);
 	temp->type=type;
+	temp->Ctype=NULL;
 	temp->next=NULL;
 
 	if(Fhead==NULL)
@@ -1256,4 +1675,131 @@ int getSize(struct Typetable *type){
 	if(type==NULL)
 		return -1;
 	return type->size; 
+}
+
+struct Classtable* CLookup(char *name){
+	struct Classtable *temp=Chead;
+	while(temp!=NULL){
+		if(!strcmp(temp->name, name))
+			return temp;
+		temp=temp->next;
+	}
+	return NULL;
+}
+
+void CInstall(char *name, char *parent_class_name){
+	struct Typetable *Ttemp;
+	struct Classtable *Ctemp;
+	struct Fieldlist *Ftemp;
+	struct Memberfunclist *Mtemp;
+
+	Ttemp=TLookup(name);
+	if(Ttemp!=NULL){
+		printf("Multiple declaration: %s\n", name);
+		exit(1);
+	}
+
+	Ctemp=CLookup(name);
+	if(Ctemp!=NULL){
+		printf("Multiple declaration: %s\n", name);
+		exit(1);
+	}
+
+	if(parent_class_name!=NULL){
+		Ctemp=CLookup(parent_class_name);
+		if(Ctemp==NULL){
+			printf("Parent Class: %s not declared\n", parent_class_name);
+			exit(1);
+		}
+	}
+
+	Ctemp=(struct Classtable*)malloc(sizeof(struct Classtable));
+	Ctemp->name=malloc(sizeof(name));
+	strcpy(Ctemp->name, name);
+	Ctemp->Memberfield=NULL;
+	Ctemp->Vfuncptr=NULL;
+	Ctemp->Parentptr=NULL;
+	if(parent_class_name!=NULL)
+		Ctemp->Parentptr=CLookup(parent_class_name);
+	Ctemp->Class_index=clabel++;
+	Ctemp->next=NULL;
+
+	if(Chead==NULL)
+		Chead=Ctail=Ctemp;
+	else{
+		Ctail->next=Ctemp;
+		Ctail=Ctemp;
+	}
+}
+
+struct Fieldlist* Class_FLookup(struct Classtable *cptr, char *name){
+	struct Fieldlist *temp=cptr->Memberfield;
+	while(temp!=NULL){
+		if(!strcmp(temp->name, name))
+			return temp;
+		temp=temp->next;
+	}
+	return NULL;
+}
+
+void Class_FInstall(struct Classtable *cptr, char *typename, char *name){
+	struct Typetable *Ttemp;
+	struct Classtable *Ctemp;
+	struct Fieldlist *temp;
+
+	Ttemp=TLookup(typename);
+	Ctemp=CLookup(typename);
+	temp=(struct Fieldlist*)malloc(sizeof(struct Fieldlist));
+	temp->name=malloc(sizeof(name));
+	strcpy(temp->name, name);
+	temp->next=NULL;
+
+	if(Ttemp!=NULL){
+		temp->type=Ttemp;
+		temp->Ctype=NULL;
+	}
+	else if(Ctemp!=NULL){
+		temp->type=NULL;
+		temp->Ctype=Ctemp;
+	}
+	else{
+		printf("Unknown typename: %s\n", typename);
+		exit(1);
+	}
+
+	if(Fhead==NULL)
+		Fhead=Ftail=temp;
+	else{
+		Ftail->next=temp;
+		Ftail=temp;
+	}
+}
+
+struct Memberfunclist* Class_MLookup(struct Classtable *cptr, char *name){
+	struct Memberfunclist *temp=cptr->Vfuncptr;
+	while(temp!=NULL){
+		if(!strcmp(temp->name, name))
+			return temp;
+		temp=temp->next;
+	}
+	return NULL;
+}
+
+void Class_MInstall(struct Classtable *cptr, char *name, struct Typetable *type, struct Paramstruct *paramlist){
+	struct Memberfunclist *temp;
+	temp=(struct Memberfunclist*)malloc(sizeof(struct Memberfunclist));
+
+	temp->name=malloc(sizeof(name));
+	strcpy(temp->name, name);
+	temp->type=type;
+	temp->paramlist=paramlist;
+	temp->flabel=flabel++;
+	temp->next=NULL;
+
+	if(Mhead==NULL)
+		Mhead=Mtail=temp;
+	else{
+		Mtail->next=temp;
+		Mtail=temp;
+	}
 }

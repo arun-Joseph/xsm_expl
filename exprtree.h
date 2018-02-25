@@ -42,6 +42,7 @@
 #define NODE_READ_ARRAY 43
 #define NODE_READ_MATRIX 44
 #define NODE_READ_PTR 45
+#define NODE_READ_TYPE 46 
 
 #define NODE_FUNC 51
 #define NODE_RET 52
@@ -53,6 +54,13 @@
 #define NODE_FREE 63
 #define NODE_NULL 64
 #define NODE_ASSIGN_FIELD 65
+
+#define NODE_NEW 71
+#define NODE_DELETE 72
+#define NODE_CLASS 73
+#define NODE_FUNC_CLASS 74
+#define NODE_FUNC_CLASS2 75
+#define NODE_FUNC_CLASS3 76
 
 #define NODE_CONN 80
 #define NODE_BRKP 81
@@ -83,6 +91,7 @@ typedef struct loop{
 typedef struct Gsymbol{
 	char *name;
 	struct Typetable *type;
+	struct Classtable *cptr;
 	int size1, size2;
 	int binding;
 	int nodetype;
@@ -118,12 +127,34 @@ typedef struct Fieldlist{
 	char *name;
 	int fieldIndex;
 	struct Typetable *type;
+	struct Classtable *Ctype;
 	struct Fieldlist *next;
 }Fieldlist;
 
+typedef struct Classtable{
+	char *name;
+	struct Fieldlist *Memberfield;
+	struct Memberfunclist *Vfuncptr;
+	struct Classtable *Parentptr;
+	int Class_index;
+	int Fieldcount;
+	int Methodcount;
+	struct Classtable *next;
+}Classtable;
+
+typedef struct Memberfunclist{
+	char *name;
+	struct Typetable *type;
+	struct Paramstruct *paramlist;
+	int Funcposition;
+	int flabel;
+	struct Memberfunclist *next;
+}Memberfunclist;
+
 int reg=-1, label=-1;
 struct Typetable *declType=NULL, *PdeclType=NULL, *functype=NULL;
-int binding=4096, flabel=0, lcount=0, count=0;
+struct Classtable *classType=NULL, *declClass=NULL;
+int binding=4096, lbind=1, flabel=0, lcount=0, count=0, clabel=0, start=0;
 FILE *target_file, *fp;
 struct loop *lHead=NULL;
 struct tnode *tptr=NULL, *tptr1=NULL;
@@ -132,6 +163,8 @@ struct Lsymbol *Lhead=NULL, *Ltail=NULL;
 struct Paramstruct *Phead=NULL, *Ptail=NULL;
 struct Typetable *Thead=NULL, *Ttail=NULL;
 struct Fieldlist *Fhead=NULL, *Ftail=NULL;
+struct Classtable *Chead=NULL, *Ctail=NULL;
+struct Memberfunclist *Mhead=NULL, *Mtail=NULL;
 
 int codeGen(struct tnode *t);
 int getReg(void);
@@ -146,7 +179,7 @@ void insLoop(int br, int cn);
 void delLoop(void);
 
 struct Gsymbol* GLookup(char *name);
-void GInstall(char *name, struct Typetable *type, int size1, int size2, int nodetype, struct Paramstruct *paramlist);
+void GInstall(char *name, struct Typetable *type, struct Classtable *cptr, int size1, int size2, int nodetype, struct Paramstruct *paramlist);
 
 struct Lsymbol* LLookup(char *name);
 void LInstall(char *name, struct Typetable *type, int nodetype);
@@ -161,3 +194,10 @@ void TInstall(char *name, int size, struct Fieldlist *fields);
 struct Fieldlist* FLookup(struct Typetable *type, char *name);
 void FInstall(struct Typetable *type, char *name);
 int getSize(struct Typetable *type);
+
+struct Classtable* CLookup(char *name);
+void CInstall(char *name, char *parent_class_name);
+struct Fieldlist* Class_FLookup(struct Classtable *cptr, char *name);
+void Class_FInstall(struct Classtable *cptr, char *typename, char *name);
+struct Memberfunclist* Class_MLookup(struct Classtable *cptr, char *name);
+void Class_MInstall(struct Classtable *cptr, char *name, struct Typetable *type, struct Paramstruct *paramlist);

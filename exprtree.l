@@ -33,10 +33,16 @@
 "endtype"	{return ENDTYPE;}
 "decl"	{return DECL;}
 "enddecl"	{return ENDDECL;}
+"class"	{return CLASS;}
+"endclass"	{return ENDCLASS;}
 "main"	{return MAIN;}
 "return"	{return RETURN;}
 "int"	{return INT;}
 "str"	{return STR;}
+"extends"	{return EXTENDS;}
+"new"	{return NEW;}
+"delete"	{return DELETE;}
+"self"	{return SELF;}
 "read"	{return READ;}
 "write"	{return WRITE;}
 "if" 	{return IF;}
@@ -58,7 +64,7 @@
 "AND"	{return AND;}
 "OR"	{return OR;}
 "NOT"	{return NOT;}
-[a-zA-Z]([a-zA-Z0-9]*)	{
+[a-zA-Z]([a-zA-Z0-9_]*)	{
 		strval=strdup(yytext);
 		yylval=createTree(TLookup("integer"), NODE_ID, strval, NULL, NULL, NULL, NULL, NULL);
 		return ID;

@@ -17,6 +17,7 @@
 
 %token ID NUM STRVAL START END READ WRITE ASSIGN INIT ALLOC FREE
 %token TYPE ENDTYPE DECL ENDDECL INT STR BRKP MAIN RETURN
+%token CLASS ENDCLASS EXTENDS NEW DELETE SELF
 %token IF THEN ELSE ENDIF WHILE DO ENDWHILE BREAK CONTINUE REPEAT UNTIL
 %token PLUS MINUS MUL DIV MOD LT GT LE GE NE EQ AND OR NOT NIL
 %left OR
@@ -28,8 +29,8 @@
 
 %%
 
-program : TypeDefBlock GDeclBlock FDefBlock MainBlock
-	| TypeDefBlock GDeclBlock MainBlock
+program : TypeDefBlock ClassDefBlock GDeclBlock FDefBlock MainBlock
+	| TypeDefBlock ClassDefBlock GDeclBlock MainBlock
 	;
 
 TypeDefBlock : TYPE TypeDefList ENDTYPE
@@ -62,6 +63,119 @@ TypeName : INT	{declType=TLookup("integer");}
 	}
 	;
 
+ClassDefBlock :	CLASS ClassDefList ENDCLASS	{
+		struct Classtable *Ctemp=Chead;
+		struct Memberfunclist *Mtemp;
+		int i;
+
+		fprintf(target_file, "L%d:\n", start);
+		fprintf(target_file, "MOV SP, 4095\n");
+		while(Ctemp!=NULL){
+			binding+=8;
+			Mtemp=Ctemp->Vfuncptr;
+			i=0;
+			while(Mtemp!=NULL){
+				fprintf(target_file, "MOV R0, F%d\n", Mtemp->flabel);
+				fprintf(target_file, "PUSH R0\n");
+				i++;
+				Mtemp=Mtemp->next;
+			}
+			fprintf(target_file, "MOV R0, -1\n");
+			while(i<8){
+				fprintf(target_file, "PUSH R0\n");
+				i++;
+			}
+			Ctemp=Ctemp->next;
+		}
+	}
+	|	{fprintf(target_file, "L%d:\n", start);}
+	;
+
+ClassDefList : ClassDefList ClassDef
+	| ClassDef
+	;
+
+ClassDef : Cname '{' DECL Fieldlists MethodDecl ENDDECL MethodDefns '}'	{
+		struct Fieldlist *Ftemp=Fhead;
+		struct Memberfunclist *Mtemp=Mhead;
+
+		count=0;
+		while(Ftemp!=NULL){
+			Ftemp->fieldIndex=count++;
+			if(Ftemp->type==NULL)
+				count++;
+			Ftemp=Ftemp->next;
+		}
+		classType->Fieldcount=count;
+		classType->Memberfield=Fhead;
+
+		count=0;
+		while(Mtemp!=NULL){
+			Mtemp->Funcposition=count++;
+			Mtemp=Mtemp->next;
+		}
+		classType->Methodcount=count;
+		classType->Vfuncptr=Mhead;
+
+		classType=NULL;
+		Fhead=Ftail=NULL;
+		Mhead=Mtail=NULL;
+	}
+	;
+
+Cname : ID	{
+		CInstall($1->name, NULL);
+		classType=CLookup($1->name);
+	}
+	| ID EXTENDS ID	{
+		CInstall($1->name, $3->name);
+		classType=CLookup($1->name);
+	}
+	;
+
+Fieldlists : Fieldlists Fld
+	| Fld
+	;
+
+Fld : Type ID ';'	{
+		if(declType!=NULL)
+			Class_FInstall(classType, declType->name, $2->name);
+		else if(declClass!=NULL)
+			Class_FInstall(classType, declClass->name, $2->name);
+		else{
+			printf("Unknown type\n");
+			exit(1);
+		}
+	}
+	;
+
+MethodDecl : MethodDecl MDecl
+	| MDecl
+	;
+
+MDecl : Type ID '(' ParamList ')' ';'	{
+		if(declType!=NULL)
+			Class_MInstall(classType, $2->name, declType, Phead);
+		else{
+			printf("Unknown type\n");
+			exit(1);
+		}
+		Phead=Ptail=NULL;
+	}
+	| Type ID '(' ')' ';'	{
+		if(declType!=NULL)
+			Class_MInstall(classType, $2->name, declType, NULL);
+		else{
+			printf("Unknown type\n");
+			exit(1);
+		}
+	}
+	;
+
+MethodDefns : MethodDefns FDef
+	| FDef
+	;
+
 GDeclBlock : DECL GDeclList ENDDECL	{
 			evaluate();
 			binding=1;
@@ -83,7 +197,8 @@ Type : INT 	{declType=TLookup("integer");}
 	| STR	{declType=TLookup("string");}
 	| ID	{
 			declType=TLookup($1->name);
-			if(declType==NULL){
+			declClass=CLookup($1->name);
+			if(declType==NULL && declClass==NULL){
 				printf("Unknown type: %s\n", $1->name);
 				exit(1);
 			}
@@ -94,20 +209,20 @@ GidList : GidList ',' Gid
 	| Gid
 	;
 
-Gid : ID				{GInstall($1->name, declType, 1, 1, NODE_ID, NULL);}
-	| ID '[' NUM ']'		{GInstall($1->name, declType, $3->value.intval, 1, NODE_ARRAY, NULL);}
-	| ID '[' NUM ']' '[' NUM ']'	{GInstall($1->name, declType, $3->value.intval, $6->value.intval, NODE_MATRIX, NULL);}
-	| MUL ID			{GInstall($2->name, declType, 1, 1, NODE_PTR, NULL);}
+Gid : ID				{GInstall($1->name, declType, declClass, 1, 1, NODE_ID, NULL);}
+	| ID '[' NUM ']'		{GInstall($1->name, declType, NULL, $3->value.intval, 1, NODE_ARRAY, NULL);}
+	| ID '[' NUM ']' '[' NUM ']'	{GInstall($1->name, declType, NULL, $3->value.intval, $6->value.intval, NODE_MATRIX, NULL);}
+	| MUL ID			{GInstall($2->name, declType, NULL, 1, 1, NODE_PTR, NULL);}
 	| ID '(' ParamList ')'		{
-						GInstall($1->name, declType, 0, 0, NODE_FUNC, Phead);
+						GInstall($1->name, declType, NULL, 0, 0, NODE_FUNC, Phead);
 						Phead=Ptail=NULL;
 					}
 	| MUL ID '(' ParamList ')'	{
-						GInstall($2->name, declType, 0, 0, NODE_FUNC, Phead);	
+						GInstall($2->name, declType, NULL, 0, 0, NODE_FUNC, Phead);	
 						Phead=Ptail=NULL;
 					}
-	| ID '(' ')'			{GInstall($1->name, declType, 0, 0, NODE_FUNC, NULL);}
-	| MUL ID '(' ')'		{GInstall($2->name, declType, 0, 0, NODE_FUNC, NULL);}
+	| ID '(' ')'			{GInstall($1->name, declType, NULL, 0, 0, NODE_FUNC, NULL);}
+	| MUL ID '(' ')'		{GInstall($2->name, declType, NULL, 0, 0, NODE_FUNC, NULL);}
 	;
 
 FDefBlock : FDefBlock FDef
@@ -126,9 +241,12 @@ FuncType : INT	{functype=TLookup("integer");}
 	;
 
 FDef : FuncType ID '(' ParamList ')' '{' LDeclBlock Body '}'	{
-			struct Lsymbol *Ltemp;
-			struct Gsymbol *Gtemp;
-			struct Paramstruct *Ptemp1, *Ptemp2;
+		struct Lsymbol *Ltemp;
+		struct Gsymbol *Gtemp;
+		struct Memberfunclist *Mtemp;
+		struct Paramstruct *Ptemp1, *Ptemp2;
+
+		if(classType==NULL){
 			binding=1;
 
 			Gtemp=GLookup($2->name);
@@ -180,15 +298,70 @@ FDef : FuncType ID '(' ParamList ')' '{' LDeclBlock Body '}'	{
 			fprintf(target_file, "MOV BP, [SP]\n");
 			fprintf(target_file, "POP R0\n");
 			fprintf(target_file, "RET\n");
-
-			Lhead=Ltail=NULL;
-			Phead=Ptail=NULL;
 		}
-	| FuncType ID '(' ')' '{' LDeclBlock Body '}'	{
-			struct Lsymbol *Ltemp;
-			struct Gsymbol *Gtemp;
-			binding=1;
+		else{
+			Mtemp=Mhead;
+			while(Mtemp!=NULL){
+				if(!strcmp($2->name, Mtemp->name))
+					break;
+				Mtemp=Mtemp->next;
+			}
 
+			if(Mtemp==NULL){
+				printf("Method not declared: %s\n", $2->name);
+				exit(1);
+			}
+
+			Ptemp1=Phead;
+			Ptemp2=Mtemp->paramlist;
+
+			while(Ptemp1!=NULL && Ptemp2!=NULL){
+				if(Ptemp1->type!=Ptemp2->type
+					|| strcmp(Ptemp1->name, Ptemp2->name)
+					|| Ptemp1->nodetype!=Ptemp2->nodetype){
+					printf("Incorrect Parameter List\n");
+					exit(1);
+				}
+				Ptemp1=Ptemp1->next;
+				Ptemp2=Ptemp2->next;
+			}
+
+			if(Ptemp1!=NULL || Ptemp2!=NULL){
+				printf("Incorrect Parameter List\n");
+				exit(1);
+			}
+
+			fprintf(target_file, "F%d:\n", Mtemp->flabel);
+			fprintf(target_file, "PUSH BP\n");
+			fprintf(target_file, "MOV BP, SP\n");
+
+			lcount=0;
+			Ltemp=Lhead;
+			while(Ltemp!=NULL){
+				lcount++;
+				Ltemp=Ltemp->next;
+			}
+			fprintf(target_file, "ADD SP, %d\n", lcount);
+
+			codeGen($8);
+
+			fprintf(target_file, "SUB SP, %d\n", lcount);
+			fprintf(target_file, "MOV BP, [SP]\n");
+			fprintf(target_file, "POP R0\n");
+			fprintf(target_file, "RET\n");
+		}
+
+		lbind=1;
+		Lhead=Ltail=NULL;
+		Phead=Ptail=NULL;
+	}
+	| FuncType ID '(' ')' '{' LDeclBlock Body '}'	{
+		struct Lsymbol *Ltemp;
+		struct Gsymbol *Gtemp;
+		struct Memberfunclist *Mtemp;
+
+		if(classType==NULL){
+			binding=1;
 			Gtemp=GLookup($2->name);
 			if(Gtemp==NULL || Gtemp->nodetype!=NODE_FUNC){
 				printf("Function not declared: %s\n", $2->name);
@@ -224,10 +397,49 @@ FDef : FuncType ID '(' ParamList ')' '{' LDeclBlock Body '}'	{
 			fprintf(target_file, "MOV BP, [SP]\n");
 			fprintf(target_file, "POP R0\n");
 			fprintf(target_file, "RET\n");
-
-			Lhead=Ltail=NULL;
-			Phead=Ptail=NULL;
 		}
+		else{
+			Mtemp=Mhead;
+			while(Mtemp!=NULL){
+				if(!strcmp($2->name, Mtemp->name))
+					break;
+				Mtemp=Mtemp->next;
+			}
+
+			if(Mtemp==NULL){
+				printf("Method not declared: %s\n", $2->name);
+				exit(1);
+			}
+
+			if(Mtemp->paramlist!=NULL){
+				printf("Parameter List is not NULLs\n");
+				exit(1);
+			}
+
+			fprintf(target_file, "F%d:\n", Mtemp->flabel);
+			fprintf(target_file, "PUSH BP\n");
+			fprintf(target_file, "MOV BP, SP\n");
+
+			lcount=0;
+			Ltemp=Lhead;
+			while(Ltemp!=NULL){
+				lcount++;
+				Ltemp=Ltemp->next;
+			}
+			fprintf(target_file, "ADD SP, %d\n", lcount);
+
+			codeGen($7);
+
+			fprintf(target_file, "SUB SP, %d\n", lcount);
+			fprintf(target_file, "MOV BP, [SP]\n");
+			fprintf(target_file, "POP R0\n");
+			fprintf(target_file, "RET\n");
+		}
+
+		lbind=1;
+		Lhead=Ltail=NULL;
+		Phead=Ptail=NULL;
+	}
 	| FuncType MUL ID '(' ParamList ')' '{' LDeclBlock Body '}'	{
 			struct Lsymbol *Ltemp;
 			struct Gsymbol *Gtemp;
@@ -282,6 +494,7 @@ FDef : FuncType ID '(' ParamList ')' '{' LDeclBlock Body '}'	{
 			fprintf(target_file, "POP R0\n");
 			fprintf(target_file, "RET\n");
 
+			lbind=1;
 			Lhead=Ltail=NULL;
 			Phead=Ptail=NULL;
 		}
@@ -326,6 +539,7 @@ FDef : FuncType ID '(' ParamList ')' '{' LDeclBlock Body '}'	{
 			fprintf(target_file, "POP R0\n");
 			fprintf(target_file, "RET\n");
 
+			lbind=1;
 			Lhead=Ltail=NULL;
 			Phead=Ptail=NULL;
 		}
@@ -366,11 +580,11 @@ PType : INT 	{PdeclType=TLookup("integer");}
 	;
 
 LDeclBlock : DECL LDeclList ENDDECL
-	| DECL ENDDECL
+	|
 	;
 
 LDeclList : LDeclList LDecl
-	| LDecl
+	| 
 	;
 
 LDecl : Type IdList ';'
@@ -419,6 +633,7 @@ MainBlock : FuncType MAIN '(' ')' '{' LDeclBlock Body '}'	{
 			fprintf(target_file, "POP R0\n");
 			fprintf(target_file, "RET\n");
 
+			lbind=1;
 			Lhead=Ltail=NULL;
 			Phead=Ptail=NULL;
 		}
@@ -438,7 +653,7 @@ Stmt :	InputStmt | OutputStmt | AsgStmt | IfStmt | WhileStmt	{$$=$1;}
 	| BRKP ';'	{$$=createTree(TLookup("void"), NODE_BRKP, NULL, NULL, NULL, NULL, NULL, NULL);}
 	;
 
-InputStmt : READ '(' ID ')' ';'		{
+InputStmt : READ '(' ID ')' ';'	{
 				idCheck($3, NODE_ID);
 				$$=createTree(TLookup("void"), NODE_READ, NULL, NULL, NULL, $3, NULL, NULL);
 			}
@@ -452,9 +667,13 @@ InputStmt : READ '(' ID ')' ';'		{
 				typeCheck($5->type, $8->type, NODE_MATRIX);
 				$$=createTree(TLookup("void"), NODE_READ_MATRIX, NULL, NULL, NULL, $3, $5, $8);
 			}
-	| READ '(' MUL ID ')' ';'		{
+	| READ '(' MUL ID ')' ';'	{
 				idCheck($4, NODE_PTR);
 				$$=createTree(TLookup("void"), NODE_READ_PTR, NULL, NULL, NULL, $4, NULL, NULL);
+			}
+	| READ '(' Field ')' ';'	{
+				typeCheck($3->type, TLookup("type"), NODE_FIELD);
+				$$=createTree(TLookup("void"), NODE_READ_TYPE, NULL, NULL, NULL, $3, NULL, NULL);
 			}
 	;
 
@@ -512,6 +731,24 @@ AsgStmt : ID ASSIGN Expr ';' {
 				typeCheck($3->type, TLookup("type"), NODE_FREE);
 				$$=createTree(TLookup("void"), NODE_FREE, NULL, NULL, NULL, $3, NULL, NULL);
 			}
+	| ID ASSIGN NEW '(' ID ')' ';'	{
+				typeCheck($1->type, NULL, NODE_NEW);
+				$$=createTree(TLookup("void"), NODE_ASSIGN, NULL, NULL, NULL, $1,
+					createTree(NULL, NODE_ALLOC, NULL, NULL, NULL, NULL, NULL, NULL), $5);
+			}
+	| Field ASSIGN NEW '(' ID ')' ';'	{
+				typeCheck($1->type, NULL, NODE_NEW);
+				$$=createTree(TLookup("void"), NODE_ASSIGN_FIELD, NULL, NULL, NULL, $1,
+					createTree(NULL, NODE_ALLOC, NULL, NULL, NULL, NULL, NULL, NULL), $5);
+			}
+	| DELETE '(' ID ')' ';'	{
+				typeCheck($3->type, NULL, NODE_FREE);
+				$$=createTree(TLookup("void"), NODE_FREE, NULL, NULL, NULL, $3, NULL, NULL);
+			}
+	| DELETE '(' Field ')' ';'	{
+				typeCheck($3->type, NULL, NODE_FREE);
+				$$=createTree(TLookup("void"), NODE_FREE, NULL, NULL, NULL, $3, NULL, NULL);
+			}
 	;
 
 IfStmt : IF '(' Expr ')' THEN Slist ELSE Slist ENDIF ';'{$$=createTree(TLookup("void"), NODE_ELIF, NULL, NULL, NULL, $3, $6, $8);}
@@ -524,7 +761,8 @@ WhileStmt : WHILE '(' Expr ')' DO Slist ENDWHILE ';'	{$$=createTree(TLookup("voi
 	;
 
 Field : Field '.' ID	{
-				if(FLookup($1->type, $3->name)==NULL){
+				struct Fieldlist *Ftemp=FLookup($1->type, $3->name);
+				if(Ftemp==NULL){
 					printf("Unknown identifier in FIELD: %s\n", $3->name);
 					exit(1);
 				}
@@ -534,7 +772,7 @@ Field : Field '.' ID	{
 					tptr1=tptr1->ptr3;
 				tptr1->ptr3=tptr;
 				$$=$1;
-				$$->type=$3->type;
+				$$->type=Ftemp->type;
 			}
 	| ID '.' ID	{
 				struct Fieldlist *Ftemp=FLookup($1->type, $3->name);
@@ -544,6 +782,120 @@ Field : Field '.' ID	{
 				}
 				$$=createTree(Ftemp->type, NODE_FIELD, NULL, NULL, NULL, $1, $3, NULL);
 			}
+	| SELF '.' ID	{
+				struct Fieldlist *Ftemp;
+				if(classType==NULL){
+					printf("self can be used only inside class\n");
+					exit(1);
+				}
+				Ftemp=Fhead;
+				while(Ftemp!=NULL){
+					if(!strcmp(Ftemp->name, $3->name))
+						break;
+					Ftemp=Ftemp->next;
+				}
+				if(Ftemp==NULL){
+					printf("Unknown MemberField: %s\n", $3->name);
+					exit(1);
+				}
+				$$=createTree(Ftemp->type, NODE_FIELD, NULL, NULL, NULL, NULL, $3, NULL);
+			}
+	;
+
+FieldFunction : ID '.' ID '(' ArgList ')'	{
+			struct Gsymbol *Gtemp;
+			struct Memberfunclist *Mtemp;
+			Gtemp=GLookup($1->name);
+			if(Gtemp==NULL){
+				printf("Unknown identifier: %s\n", $1->name);
+				exit(1);
+			}
+			Mtemp=Class_MLookup(Gtemp->cptr, $3->name);
+			if(Mtemp==NULL){
+				printf("Unknown Member Function: %s\n", $3->name);
+				exit(1);
+			}
+			$$=createTree(Mtemp->type, NODE_FUNC_CLASS, NULL, NULL, $5, $1, $3, NULL);
+		}
+	| ID '.' ID '(' ')'	{
+			struct Gsymbol *Gtemp;
+			struct Memberfunclist *Mtemp;
+			Gtemp=GLookup($1->name);
+			if(Gtemp==NULL){
+				printf("Unknown identifier: %s\n", $1->name);
+				exit(1);
+			}
+			Mtemp=Class_MLookup(Gtemp->cptr, $3->name);
+			if(Mtemp==NULL){
+				printf("Unknown Member Function: %s\n", $3->name);
+				exit(1);
+			}
+			$$=createTree(Mtemp->type, NODE_FUNC_CLASS, NULL, NULL, NULL, $1, $3, NULL);
+		}
+	| SELF '.' ID '(' ArgList ')'	{
+			struct Memberfunclist *Mtemp=Mhead;
+			while(Mtemp!=NULL){
+				if(!strcmp(Mtemp->name, $3->name))
+					break;
+				Mtemp=Mtemp->next;
+			}
+			if(Mtemp==NULL){
+				printf("Unknown Member Function: %s\n", $3->name);
+				exit(1);
+			}
+			$$=createTree(Mtemp->type, NODE_FUNC_CLASS2, NULL, NULL, $5, NULL, $3, NULL);
+		}
+	| SELF '.' ID  '(' ')'	{
+			struct Memberfunclist *Mtemp=Mhead;
+			while(Mtemp!=NULL){
+				if(!strcmp(Mtemp->name, $3->name))
+					break;
+				Mtemp=Mtemp->next;
+			}
+			if(Mtemp==NULL){
+				printf("Unknown Member Function: %s\n", $3->name);
+				exit(1);
+			}
+			$$=createTree(Mtemp->type, NODE_FUNC_CLASS2, NULL, NULL, NULL, NULL, $3, NULL);
+		}
+	| Field '.' ID '(' ArgList ')'	{
+			struct Fieldlist *Ftemp=Fhead;
+			struct Memberfunclist *Mtemp;
+			while(Ftemp!=NULL){
+				if(!strcmp(Ftemp->name, $1->ptr2->name))
+					break;
+				Ftemp=Ftemp->next;
+			}
+			if(Ftemp==NULL){
+				printf("Unknown Member Field: %s\n", $1->ptr2->name);
+				exit(1);
+			}
+			Mtemp=Class_MLookup(Ftemp->Ctype, $3->name);
+			if(Mtemp==NULL){
+				printf("Unknown Member Function: %s\n", $3->name);
+				exit(1);
+			}
+			$$=createTree(Mtemp->type, NODE_FUNC_CLASS3, NULL, NULL, $5, NULL, $1->ptr2, $3);
+		}
+	| Field '.' ID '(' ')'	{
+			struct Fieldlist *Ftemp=Fhead;
+			struct Memberfunclist *Mtemp;
+			while(Ftemp!=NULL){
+				if(!strcmp(Ftemp->name, $1->ptr2->name))
+					break;
+				Ftemp=Ftemp->next;
+			}
+			if(Ftemp==NULL){
+				printf("Unknown Member Field: %s\n", $1->ptr2->name);
+				exit(1);
+			}
+			Mtemp=Class_MLookup(Ftemp->Ctype, $3->name);
+			if(Mtemp==NULL){
+				printf("Unknown Member Function: %s\n", $3->name);
+				exit(1);
+			}
+			$$=createTree(Mtemp->type, NODE_FUNC_CLASS3, NULL, NULL, NULL, NULL, $1->ptr2, $3);
+		}
 	;
 
 Expr : 	Expr PLUS Expr 	{
@@ -611,6 +963,7 @@ Expr : 	Expr PLUS Expr 	{
 	| STRVAL	{$$=$1;}
 	| NIL		{$$=createTree(TLookup("type"), NODE_NULL, NULL, NULL, NULL, NULL, NULL, NULL);}
 	| Field		{$$=$1;}
+	| FieldFunction
 	| ID		{
 				idCheck($1, NODE_ID);
 				$$=$1;
@@ -682,6 +1035,9 @@ int main(int argc, char* argv[]){
 			yyin=fp;
 	}
 	target_file=fopen("exprtree.xsm","w");
+	start=getLabel();
+	fprintf(target_file, "0\n2056\n0\n0\n0\n0\n0\n0\n");
+	fprintf(target_file, "JMP L%d\n", start);
 	yyparse();
 	return 0;
 }
