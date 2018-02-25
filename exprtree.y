@@ -128,13 +128,35 @@ Cname : ID	{
 		classType=CLookup($1->name);
 	}
 	| ID EXTENDS ID	{
+		struct Fieldlist *Ftemp;
+		struct Memberfunclist *Mtemp;
+
 		CInstall($1->name, $3->name);
+		classType=CLookup($3->name);
+
+		Ftemp=classType->Memberfield;
+		while(Ftemp!=NULL){
+			if(Ftemp->type!=NULL)
+				Class_FInstall(CLookup($1->name), Ftemp->type->name, Ftemp->name);
+			else
+				Class_FInstall(CLookup($1->name), Ftemp->Ctype->name, Ftemp->name);
+			Ftemp=Ftemp->next;
+		}
+
+		Mtemp=classType->Vfuncptr;
+		while(Mtemp!=NULL){
+			Class_MInstall(CLookup($1->name), Mtemp->name, Mtemp->type, Mtemp->paramlist);
+			Mtail->flabel=Mtemp->flabel;
+			flabel--;
+			Mtemp=Mtemp->next;
+		}
+
 		classType=CLookup($1->name);
 	}
 	;
 
 Fieldlists : Fieldlists Fld
-	| Fld
+	|
 	;
 
 Fld : Type ID ';'	{

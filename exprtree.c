@@ -713,6 +713,12 @@ int codeGen(struct tnode *t){
 				}
 				fprintf(target_file, "MOV [%d], %d\n", Gtemp->binding+1, 4096+8*Ctemp->Class_index);
 			}
+			else if(t->ptr2->type==NULL){
+				Gtemp=GLookup(t->ptr2->name);
+				fprintf(target_file, "MOV R%d, [%d]\n", r1, Gtemp->binding+1);
+				Gtemp=GLookup(t->ptr1->name);
+				fprintf(target_file, "MOV [%d], R%d\n", Gtemp->binding+1, r1);
+			}
 			freeReg();
 			freeReg();
 			break;
@@ -1182,6 +1188,66 @@ int codeGen(struct tnode *t){
 			break;
 		case NODE_READ_TYPE:
 			r1=getReg();
+
+			if(t->ptr1->ptr1==NULL){
+				Ctemp=classType;
+				Ptemp=Phead;
+				r3=3;
+				while(Ptemp!=NULL){
+					r3++;
+					Ptemp=Ptemp->next;
+				}
+				fprintf(target_file, "MOV R%d, BP\n", r1);
+				fprintf(target_file, "SUB R%d, %d\n", r1, r3+1);
+				fprintf(target_file, "MOV R%d, [R%d]\n", r1, r1);
+
+				Ftemp=Fhead;
+				r3=0;
+				while(strcmp(Ftemp->name, t->ptr1->ptr2->name)){
+					r3++;
+					if(Ftemp->type==NULL)
+						r3++;
+					Ftemp=Ftemp->next;
+				}
+				fprintf(target_file, "ADD R%d, %d\n", r1, r3);
+				Ttemp=Ftemp->type;
+
+				if(t->ptr1->ptr3!=NULL){
+					fprintf(target_file, "MOV R%d, [R%d]\n", r1, r1);
+					temp=t->ptr1->ptr3;
+					while(temp->ptr3!=NULL){
+						Ftemp=FLookup(Ttemp, temp->ptr2->name);
+						if(Ftemp==NULL){
+							printf("Unknown identifier in FIELD: %s\n", temp->ptr2->name);
+							exit(1);
+						}
+						fprintf(target_file, "ADD R%d, %d\n", r1, Ftemp->fieldIndex);
+						fprintf(target_file, "MOV R%d, [R%d]\n", r1, r1);
+						Ttemp=Ftemp->type;
+						temp=temp->ptr3;
+					}
+					Ftemp=FLookup(Ttemp, temp->ptr2->name);
+					if(Ftemp==NULL){
+						printf("Unknown identifier in FIELD: %s\n", temp->ptr2->name);
+						exit(1);
+					}
+					fprintf(target_file, "ADD R%d, %d\n", r1, Ftemp->fieldIndex);
+				}
+
+				r2=getReg();
+				fprintf(target_file, "MOV R%d, \"Read\"\n", r2);
+				fprintf(target_file, "PUSH R%d\n", r2);
+				fprintf(target_file, "MOV R%d, -1\n", r2);
+				fprintf(target_file, "PUSH R%d\n", r2);
+				fprintf(target_file, "PUSH R%d\n", r1);
+				fprintf(target_file, "ADD SP, 2\n");
+				fprintf(target_file, "CALL 0\n");
+				fprintf(target_file, "SUB SP, 5\n");
+				freeReg();
+				freeReg();
+				break;
+			}
+
 			Ltemp=LLookup(t->ptr1->ptr1->name);
 			Gtemp=GLookup(t->ptr1->ptr1->name);
 			Ptemp=PLookup(t->ptr1->ptr1->name);
@@ -1786,9 +1852,19 @@ struct Memberfunclist* Class_MLookup(struct Classtable *cptr, char *name){
 }
 
 void Class_MInstall(struct Classtable *cptr, char *name, struct Typetable *type, struct Paramstruct *paramlist){
-	struct Memberfunclist *temp;
-	temp=(struct Memberfunclist*)malloc(sizeof(struct Memberfunclist));
+	struct Memberfunclist *temp=Mhead;
+	while(temp!=NULL){
+		if(!strcmp(temp->name, name))
+			break;
+		temp=temp->next;
+	}
 
+	if(temp!=NULL){
+		temp->flabel=flabel++;
+		return;
+	}
+
+	temp=(struct Memberfunclist*)malloc(sizeof(struct Memberfunclist));
 	temp->name=malloc(sizeof(name));
 	strcpy(temp->name, name);
 	temp->type=type;
