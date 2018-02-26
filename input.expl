@@ -1,101 +1,131 @@
 class
-A         
-{
-  decl
-    int f0();
-    int f1();
-  enddecl
-  int f0() {               
-      begin
-       write("In class A f0");
-       return 1;
-      end
-  }
-  int f1() {                  
-      begin
-        write("In class A f1");
-        return 1;
-      end
-  }
-}                      
-B extends A
-{
-  decl
-    int f0();
-    int f2();
-  enddecl
-int f0() {                    
-     begin
-       write("In class B f0");
-       return 1;
-     end
-}
-int f2() {                  
-     begin
-       write("In class B f2");
-       return 1;
-     end
+LinkedList{
+decl
+	int key;
+	LinkedList next;
+	int init(int key);
+	int getkey();
+	int insert(int key);
+	int del();
+	int printrev();
+enddecl
+	int init(int key){
+		begin
+			self.key=key;
+			self.next=null;
+			return 1;
+		end
+	}
+
+	int getkey(){
+		begin
+			return self.key;
+		end
+	}
+
+	int insert(int key){
+		decl
+			int temp;
+		enddecl
+		begin
+			if(self.next==null) then
+				self.next=new(LinkedList);
+				temp=self.next.init(key);
+			else
+				temp=self.next.insert(key);
+			endif;
+			return 1;
+		end
+	}
+
+	int del(){
+		decl
+			int temp;
+		enddecl
+		begin
+			if(self.key!=0) then
+				if(self.next.getkey()==0) then
+					self.next=null;
+				else
+					temp=self.next.del();
+				endif;
+			endif;
+			return 1;
+		end
+	}
+
+	int printrev(){
+		decl
+			int temp;
+		enddecl
+		begin
+			if(self.next==null) then
+				write(self.key);
+			else
+				temp=self.next.printrev();
+				write(self.key);
+			endif;
+			return 1;
+		end
+	}
 }
 
+DoubleLinkedList extends LinkedList{
+decl
+	LinkedList prev;
+	int init(int key);
+	int insert(int key);
+	int del();
+	int printrev();
+enddecl
+	int init(int key){
+		begin
+			self.key=key;
+			self.next=null;
+			self.prev=null;
+			return 1;
+		end
+	}
 
-}                      
-C extends B
-{
-  decl
-    int f0();
-    int f2();
-    int f4();
-  enddecl
-int f0() {                
-     begin
-       write("In class C f0");
-       return 1;
-     end
+	int printrev(){
+		decl
+			int temp;
+		enddecl
+		begin
+			if(self.next==null) then
+				write(self.key);
+			else
+				temp=self.next.printrev();
+				write(self.key);
+			endif;
+			return 1;
+		end
+	}
 }
-int f2() {                
-    begin
-       write("In class C f2");
-       return 1;
-    end
-}
-int f4() {              
-    begin
-       write("In class C f4");
-       return 1;
-    end
-}
-
-
-
-}                       
 endclass
 
-
 decl
-    A obj ;
-    A test_obj;
+	LinkedList Lhead;
+	DoubleLinkedList Dhead;
 enddecl
 
-int main() {
-  decl
-    int temp,n;
-  enddecl
-  begin
-    temp= initialize();
-    read(n);
-    if(n < 0)then
-        obj = new(A);
-    else
-        if(n == 0)then
-            obj = new(B);
-        else
-            if(n > 0)then
-                obj = new(C);
-            endif;
-       endif;
-    endif;
-   test_obj = obj;
-   write(test_obj.f0());              
-   return 1;
-  end
+int main(){
+decl
+	int val, temp, n;
+enddecl
+begin
+	val=initialize();
+	Lhead=new(LinkedList);
+	read(n);
+	temp=Lhead.init(n);
+	while(n!=0) do
+		read(n);
+		temp=Lhead.insert(n);
+	endwhile;
+	temp=Lhead.del();
+	temp=Lhead.printrev();
+	Dhead=Lhead;
+	temp=Dhead.printrev();
+	return 1;
+end
 }

@@ -42,7 +42,7 @@
 #define NODE_READ_ARRAY 43
 #define NODE_READ_MATRIX 44
 #define NODE_READ_PTR 45
-#define NODE_READ_TYPE 46 
+#define NODE_READ_FIELD 46 
 
 #define NODE_FUNC 51
 #define NODE_RET 52

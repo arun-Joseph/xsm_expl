@@ -16,7 +16,7 @@ int getLabel(){
 }
 
 int codeGen(struct tnode *t){
-	int r1, r2, r3, l1, l2;
+	int r1, r2, r3, l1, l2, l3;
 	struct Lsymbol *Ltemp;
 	struct Gsymbol *Gtemp;
 	struct Paramstruct *Ptemp;
@@ -279,44 +279,59 @@ int codeGen(struct tnode *t){
 		case NODE_FUNC_CLASS:
 			Gtemp=GLookup(t->ptr1->name);
 			Ctemp=Gtemp->cptr;
-			Mtemp=Class_MLookup(Ctemp, t->ptr2->name);
-			Ptemp=Mtemp->paramlist;
+			Mtemp=Ctemp->Vfuncptr;
 
-			r1=0;
-			while(Ptemp!=NULL){
-				r1++;
-				Ptemp=Ptemp->next;
+			while(Mtemp!=NULL){
+				if(strcmp(Mtemp->name, t->ptr2->name)){
+					Mtemp=Mtemp->next;
+					continue;
+				}
+
+				Ptemp=Mtemp->paramlist;
+
+				r1=0;
+				while(Ptemp!=NULL){
+					r1++;
+					Ptemp=Ptemp->next;
+				}
+
+				r2=0;
+				temp=t->arglist;
+				while(temp!=NULL){
+					r2++;
+					temp=temp->ptr2;
+				}
+
+				if(r1!=r2){
+					Mtemp=Mtemp->next;
+					continue;
+				}
+
+				r1=0;
+				r2--;
+				Ptemp=Mtemp->paramlist;
+				while(Ptemp!=NULL){
+					r3=0;
+					temp=t->arglist;
+					while(r3<r2){
+						r3++;
+						temp=temp->ptr2;
+					}
+					if(Ptemp->type!=temp->ptr1->type)
+						break;
+					r2--;
+					Ptemp=Ptemp->next;
+				}
+				if(Ptemp==NULL)
+					break;
+				Mtemp=Mtemp->next;
 			}
 
-			r2=0;
-			temp=t->arglist;
-			while(temp!=NULL){
-				r2++;
-				temp=temp->ptr2;
-			}
-
-			if(r1!=r2){
-				printf("Incorrect no. of arguments: %s.%s\n", t->ptr1->name, t->ptr2->name);
+			if(Mtemp==NULL){
+				printf("Incorrect Paramter List: %s.%s\n", t->ptr1->name, t->ptr2->name);
 				exit(1);
 			}
 
-			r1=0;
-			r2--;
-			Ptemp=Mtemp->paramlist;
-			while(Ptemp!=NULL){
-				r3=0;
-				temp=t->arglist;
-				while(r3<r2){
-					r3++;
-					temp=temp->ptr2;
-				}
-				if(Ptemp->type!=temp->ptr1->type){
-					printf("Incorrect paramter: %s\n", Ptemp->name);
-					exit(1);
-				}
-				r2--;
-				Ptemp=Ptemp->next;
-			}
 			for(r2=0;r2<=reg;r2++)
 				fprintf(target_file, "PUSH R%d\n", r2);
 			reg=-1;
@@ -360,54 +375,67 @@ int codeGen(struct tnode *t){
 			Ctemp=classType;
 			Mtemp=Mhead;
 			l2=0;
-			while(strcmp(Mtemp->name, t->ptr2->name)){
+			while(Mtemp!=NULL){
+				if(strcmp(Mtemp->name, t->ptr2->name)){
+					l2++;
+					Mtemp=Mtemp->next;
+					continue;
+				}
+
+				Ptemp=Mtemp->paramlist;
+
+				r1=0;
+				while(Ptemp!=NULL){
+					r1++;
+					Ptemp=Ptemp->next;
+				}
+
+				r2=0;
+				temp=t->arglist;
+				while(temp!=NULL){
+					r2++;
+					temp=temp->ptr2;
+				}
+
+				if(r1!=r2){
+					l2++;
+					Mtemp=Mtemp->next;
+					continue;
+				}
+			
+				Ptemp=Phead;
+				l1=0;
+				while(Ptemp!=NULL){
+					l1++;
+					Ptemp=Ptemp->next;
+				}
+
+				r1=0;
+				r2--;
+				Ptemp=Mtemp->paramlist;
+				while(Ptemp!=NULL){
+					r3=0;
+					temp=t->arglist;
+					while(r3<r2){
+						r3++;
+						temp=temp->ptr2;
+					}
+					if(Ptemp->type!=temp->ptr1->type)
+						break;
+					r2--;
+					Ptemp=Ptemp->next;
+				}
+				if(Ptemp==NULL)
+					break;
 				l2++;
 				Mtemp=Mtemp->next;
 			}
-			Ptemp=Mtemp->paramlist;
 
-			r1=0;
-			while(Ptemp!=NULL){
-				r1++;
-				Ptemp=Ptemp->next;
-			}
-
-			r2=0;
-			temp=t->arglist;
-			while(temp!=NULL){
-				r2++;
-				temp=temp->ptr2;
-			}
-
-			if(r1!=r2){
-				printf("Incorrect no. of arguments: self.%s\n", t->ptr2->name);
+			if(Mtemp==NULL){
+				printf("Incorrect Parameter List: self.%s\n", t->ptr2->name);
 				exit(1);
 			}
 			
-			Ptemp=Phead;
-			l1=0;
-			while(Ptemp!=NULL){
-				l1++;
-				Ptemp=Ptemp->next;
-			}
-
-			r1=0;
-			r2--;
-			Ptemp=Mtemp->paramlist;
-			while(Ptemp!=NULL){
-				r3=0;
-				temp=t->arglist;
-				while(r3<r2){
-					r3++;
-					temp=temp->ptr2;
-				}
-				if(Ptemp->type!=temp->ptr1->type){
-					printf("Incorrect paramter: %s\n", Ptemp->name);
-					exit(1);
-				}
-				r2--;
-				Ptemp=Ptemp->next;
-			}
 			for(r2=0;r2<=reg;r2++)
 				fprintf(target_file, "PUSH R%d\n", r2);
 			reg=-1;
@@ -462,51 +490,73 @@ int codeGen(struct tnode *t){
 				l2++;
 				Ftemp=Ftemp->next;
 			}
-			Mtemp=Class_MLookup(Ftemp->Ctype, t->ptr3->name);
-			Ptemp=Mtemp->paramlist;
+			Ctemp=Ftemp->Ctype;
+			if(Ctemp==classType)
+				Mtemp=Mhead;
+			else
+				Mtemp=Ctemp->Vfuncptr;
+			l3=0;
+			while(Mtemp!=NULL){
+				if(strcmp(Mtemp->name, t->ptr3->name)){
+					l3++;
+					Mtemp=Mtemp->next;
+					continue;
+				}
 
-			r1=0;
-			while(Ptemp!=NULL){
-				r1++;
-				Ptemp=Ptemp->next;
-			}
+				Ptemp=Mtemp->paramlist;
 
-			r2=0;
-			temp=t->arglist;
-			while(temp!=NULL){
-				r2++;
-				temp=temp->ptr2;
-			}
+				r1=0;
+				while(Ptemp!=NULL){
+					r1++;
+					Ptemp=Ptemp->next;
+				}
 
-			if(r1!=r2){
-				printf("Incorrect no. of arguments: self.%s.%s\n", t->ptr2->name, t->ptr3->name);
-				exit(1);
-			}
-			
-			Ptemp=Phead;
-			l1=0;
-			while(Ptemp!=NULL){
-				l1++;
-				Ptemp=Ptemp->next;
-			}
-
-			r1=0;
-			r2--;
-			Ptemp=Mtemp->paramlist;
-			while(Ptemp!=NULL){
-				r3=0;
+				r2=0;
 				temp=t->arglist;
-				while(r3<r2){
-					r3++;
+				while(temp!=NULL){
+					r2++;
 					temp=temp->ptr2;
 				}
-				if(Ptemp->type!=temp->ptr1->type){
-					printf("Incorrect paramter: %s\n", Ptemp->name);
-					exit(1);
+
+				if(r1!=r2){
+					l3++;
+					Mtemp=Mtemp->next;
+					continue;
 				}
+			
+				Ptemp=Phead;
+				l1=0;
+				while(Ptemp!=NULL){
+					l1++;
+					Ptemp=Ptemp->next;
+				}
+
+				r1=0;
 				r2--;
-				Ptemp=Ptemp->next;
+				Ptemp=Mtemp->paramlist;
+				while(Ptemp!=NULL){
+					r3=0;
+					temp=t->arglist;
+					while(r3<r2){
+						r3++;
+						temp=temp->ptr2;
+					}
+					if(Ptemp->type!=temp->ptr1->type)
+						break;
+					r2--;
+					Ptemp=Ptemp->next;
+				}
+				if(Ptemp==NULL)
+					break;
+				l3++;
+				Mtemp=Mtemp->next;
 			}
+
+			if(Mtemp==NULL){
+				printf("Incorrect Parameter List: self.%s.%s\n", t->ptr2->name, t->ptr3->name);
+				exit(1);
+			}
+
 			for(r2=0;r2<=reg;r2++)
 				fprintf(target_file, "PUSH R%d\n", r2);
 			reg=-1;
@@ -531,7 +581,7 @@ int codeGen(struct tnode *t){
 			fprintf(target_file, "MOV R%d, [R%d]\n", r1, r1);
 			fprintf(target_file, "ADD R%d, %d\n", r1, l2+1);
 			fprintf(target_file, "MOV R%d, [R%d]\n", r1, r1);
-			fprintf(target_file, "ADD R%d, %d\n", r1, Mtemp->Funcposition);
+			fprintf(target_file, "ADD R%d, %d\n", r1, l3);
 			fprintf(target_file, "MOV R%d, [R%d]\n", r1, r1);
 			fprintf(target_file, "CALL R%d\n", r1);
 			fprintf(target_file, "POP R%d\n", r1);
@@ -1186,7 +1236,7 @@ int codeGen(struct tnode *t){
 			freeReg();
 			freeReg();
 			break;
-		case NODE_READ_TYPE:
+		case NODE_READ_FIELD:
 			r1=getReg();
 
 			if(t->ptr1->ptr1==NULL){
@@ -1320,7 +1370,6 @@ int codeGen(struct tnode *t){
 }
 
 void typeCheck(struct Typetable *type1, struct Typetable *type2, int nodetype){
-	return;
 	switch(nodetype){
 		case NODE_ASSIGN:
 			if(type2==TLookup("type") && (type1==TLookup("integer") || type1==TLookup("string"))){
@@ -1385,13 +1434,25 @@ void typeCheck(struct Typetable *type1, struct Typetable *type2, int nodetype){
 				exit(1);
 			}
 			break;
-		
+		case NODE_ALLOC:
+		case NODE_FREE:
+			if(type1==NULL || type1==TLookup("integer") || type1==TLookup("string")){
+				printf("Alloc/Free Type Mismatch\n");
+				exit(1);
+			}
+			break;
+		case NODE_NEW:
+		case NODE_DELETE:
+			if(type1!=NULL){
+				printf("New/Delete Type Mismatch\n");
+				exit(1);
+			}
+			break;
 	}
 }
 
 void idCheck(struct tnode *t, int nodetype){
 	int inodetype;
-	return;
 	struct Lsymbol *Ltemp=LLookup(t->name);
 	struct Gsymbol *Gtemp=GLookup(t->name);
 	struct Paramstruct *Ptemp=PLookup(t->name);
@@ -1853,15 +1914,47 @@ struct Memberfunclist* Class_MLookup(struct Classtable *cptr, char *name){
 
 void Class_MInstall(struct Classtable *cptr, char *name, struct Typetable *type, struct Paramstruct *paramlist){
 	struct Memberfunclist *temp=Mhead;
+	struct Paramstruct *Ptemp1, *Ptemp2;
+	int fl=0;
+
 	while(temp!=NULL){
-		if(!strcmp(temp->name, name))
-			break;
+		if(!strcmp(temp->name, name)){
+			Ptemp1=temp->paramlist;
+			Ptemp2=paramlist;
+			fl=0;
+			while(Ptemp1!=NULL && Ptemp2!=NULL){
+				if(Ptemp1->type!=Ptemp2->type)
+					break;
+				Ptemp1=Ptemp1->next;
+				Ptemp2=Ptemp2->next;
+			}
+			if(Ptemp1!=NULL || Ptemp2!=NULL)
+				fl=1;
+
+			if(fl==0){
+				temp->flabel=flabel++;
+				return;
+			}
+		}
 		temp=temp->next;
 	}
 
 	if(temp!=NULL){
-		temp->flabel=flabel++;
-		return;
+		Ptemp1=temp->paramlist;
+		Ptemp2=paramlist;
+		while(Ptemp1!=NULL && Ptemp2!=NULL){
+			if(Ptemp1->type!=Ptemp2->type)
+				break;
+			Ptemp1=Ptemp1->next;
+			Ptemp2=Ptemp2->next;
+		}
+		if(Ptemp1!=NULL || Ptemp2!=NULL)
+			fl=1;
+
+		if(fl==0){
+			temp->flabel=flabel++;
+			return;
+		}
 	}
 
 	temp=(struct Memberfunclist*)malloc(sizeof(struct Memberfunclist));

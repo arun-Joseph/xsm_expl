@@ -106,6 +106,10 @@ ClassDef : Cname '{' DECL Fieldlists MethodDecl ENDDECL MethodDefns '}'	{
 				count++;
 			Ftemp=Ftemp->next;
 		}
+		if(count>8){
+			printf("Class Member Field count exceeded: %s\n", classType->name);
+			exit(1);
+		}
 		classType->Fieldcount=count;
 		classType->Memberfield=Fhead;
 
@@ -113,6 +117,10 @@ ClassDef : Cname '{' DECL Fieldlists MethodDecl ENDDECL MethodDefns '}'	{
 		while(Mtemp!=NULL){
 			Mtemp->Funcposition=count++;
 			Mtemp=Mtemp->next;
+		}
+		if(count>8){
+			printf("Class Member Function count exceeded: %s\n", classType->name);
+			exit(1);
 		}
 		classType->Methodcount=count;
 		classType->Vfuncptr=Mhead;
@@ -165,7 +173,7 @@ Fld : Type ID ';'	{
 		else if(declClass!=NULL)
 			Class_FInstall(classType, declClass->name, $2->name);
 		else{
-			printf("Unknown type\n");
+			printf("Unknown type: %s\n", $2->name);
 			exit(1);
 		}
 	}
@@ -179,7 +187,7 @@ MDecl : Type ID '(' ParamList ')' ';'	{
 		if(declType!=NULL)
 			Class_MInstall(classType, $2->name, declType, Phead);
 		else{
-			printf("Unknown type\n");
+			printf("Unknown type: %s\n", $2->name);
 			exit(1);
 		}
 		Phead=Ptail=NULL;
@@ -188,7 +196,7 @@ MDecl : Type ID '(' ParamList ')' ';'	{
 		if(declType!=NULL)
 			Class_MInstall(classType, $2->name, declType, NULL);
 		else{
-			printf("Unknown type\n");
+			printf("Unknown type: %s\n", $2->name);
 			exit(1);
 		}
 	}
@@ -324,32 +332,27 @@ FDef : FuncType ID '(' ParamList ')' '{' LDeclBlock Body '}'	{
 		else{
 			Mtemp=Mhead;
 			while(Mtemp!=NULL){
-				if(!strcmp($2->name, Mtemp->name))
-					break;
+				if(!strcmp($2->name, Mtemp->name)){
+					Ptemp1=Phead;
+					Ptemp2=Mtemp->paramlist;
+
+					while(Ptemp1!=NULL && Ptemp2!=NULL){
+						if(Ptemp1->type!=Ptemp2->type
+							|| strcmp(Ptemp1->name, Ptemp2->name)
+							|| Ptemp1->nodetype!=Ptemp2->nodetype)
+							break;
+						Ptemp1=Ptemp1->next;
+						Ptemp2=Ptemp2->next;
+					}
+
+					if(Ptemp1==NULL && Ptemp2==NULL)
+						break;
+				}
 				Mtemp=Mtemp->next;
 			}
 
 			if(Mtemp==NULL){
 				printf("Method not declared: %s\n", $2->name);
-				exit(1);
-			}
-
-			Ptemp1=Phead;
-			Ptemp2=Mtemp->paramlist;
-
-			while(Ptemp1!=NULL && Ptemp2!=NULL){
-				if(Ptemp1->type!=Ptemp2->type
-					|| strcmp(Ptemp1->name, Ptemp2->name)
-					|| Ptemp1->nodetype!=Ptemp2->nodetype){
-					printf("Incorrect Parameter List\n");
-					exit(1);
-				}
-				Ptemp1=Ptemp1->next;
-				Ptemp2=Ptemp2->next;
-			}
-
-			if(Ptemp1!=NULL || Ptemp2!=NULL){
-				printf("Incorrect Parameter List\n");
 				exit(1);
 			}
 
@@ -424,17 +427,13 @@ FDef : FuncType ID '(' ParamList ')' '{' LDeclBlock Body '}'	{
 			Mtemp=Mhead;
 			while(Mtemp!=NULL){
 				if(!strcmp($2->name, Mtemp->name))
-					break;
+					if(Mtemp->paramlist==NULL)
+						break;
 				Mtemp=Mtemp->next;
 			}
 
 			if(Mtemp==NULL){
 				printf("Method not declared: %s\n", $2->name);
-				exit(1);
-			}
-
-			if(Mtemp->paramlist!=NULL){
-				printf("Parameter List is not NULLs\n");
 				exit(1);
 			}
 
@@ -695,7 +694,7 @@ InputStmt : READ '(' ID ')' ';'	{
 			}
 	| READ '(' Field ')' ';'	{
 				typeCheck($3->type, TLookup("type"), NODE_FIELD);
-				$$=createTree(TLookup("void"), NODE_READ_TYPE, NULL, NULL, NULL, $3, NULL, NULL);
+				$$=createTree(TLookup("void"), NODE_READ_FIELD, NULL, NULL, NULL, $3, NULL, NULL);
 			}
 	;
 
@@ -764,11 +763,11 @@ AsgStmt : ID ASSIGN Expr ';' {
 					createTree(NULL, NODE_ALLOC, NULL, NULL, NULL, NULL, NULL, NULL), $5);
 			}
 	| DELETE '(' ID ')' ';'	{
-				typeCheck($3->type, NULL, NODE_FREE);
+				typeCheck($3->type, NULL, NODE_DELETE);
 				$$=createTree(TLookup("void"), NODE_FREE, NULL, NULL, NULL, $3, NULL, NULL);
 			}
 	| DELETE '(' Field ')' ';'	{
-				typeCheck($3->type, NULL, NODE_FREE);
+				typeCheck($3->type, NULL, NODE_DELETE);
 				$$=createTree(TLookup("void"), NODE_FREE, NULL, NULL, NULL, $3, NULL, NULL);
 			}
 	;
@@ -892,7 +891,14 @@ FieldFunction : ID '.' ID '(' ArgList ')'	{
 				printf("Unknown Member Field: %s\n", $1->ptr2->name);
 				exit(1);
 			}
-			Mtemp=Class_MLookup(Ftemp->Ctype, $3->name);
+			if(classType==Ftemp->Ctype){
+				Mtemp=Mhead;
+				while(!strcmp(Mtemp->name, $3->name))
+					break;
+				Mtemp=Mtemp->next;
+			}
+			else
+				Mtemp=Class_MLookup(Ftemp->Ctype, $3->name);
 			if(Mtemp==NULL){
 				printf("Unknown Member Function: %s\n", $3->name);
 				exit(1);
@@ -911,7 +917,14 @@ FieldFunction : ID '.' ID '(' ArgList ')'	{
 				printf("Unknown Member Field: %s\n", $1->ptr2->name);
 				exit(1);
 			}
-			Mtemp=Class_MLookup(Ftemp->Ctype, $3->name);
+			if(classType==Ftemp->Ctype){
+				Mtemp=Mhead;
+				while(!strcmp(Mtemp->name, $3->name))
+					break;
+				Mtemp=Mtemp->next;
+			}
+			else
+				Mtemp=Class_MLookup(Ftemp->Ctype, $3->name);
 			if(Mtemp==NULL){
 				printf("Unknown Member Function: %s\n", $3->name);
 				exit(1);
