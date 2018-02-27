@@ -76,6 +76,8 @@
 		yylval=createTree(TLookup("string"), NODE_STR, strval, NULL, NULL, NULL, NULL, NULL);
 		return STRVAL;
 	}
+"//"(.)*	{}
+"/*"([^*]|\*+[^*/])*\*+"/"	{}
 "="	{return ASSIGN;}
 "+" 	{return PLUS;}
 "-" 	{return MINUS;}
