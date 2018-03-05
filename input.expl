@@ -74,8 +74,6 @@ DoubleLinkedList extends LinkedList{
 decl
 	LinkedList prev;
 	int init(int key);
-	int insert(int key);
-	int del();
 	int printrev();
 enddecl
 	int init(int key){

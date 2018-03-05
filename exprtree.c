@@ -1939,24 +1939,6 @@ void Class_MInstall(struct Classtable *cptr, char *name, struct Typetable *type,
 		temp=temp->next;
 	}
 
-	if(temp!=NULL){
-		Ptemp1=temp->paramlist;
-		Ptemp2=paramlist;
-		while(Ptemp1!=NULL && Ptemp2!=NULL){
-			if(Ptemp1->type!=Ptemp2->type)
-				break;
-			Ptemp1=Ptemp1->next;
-			Ptemp2=Ptemp2->next;
-		}
-		if(Ptemp1!=NULL || Ptemp2!=NULL)
-			fl=1;
-
-		if(fl==0){
-			temp->flabel=flabel++;
-			return;
-		}
-	}
-
 	temp=(struct Memberfunclist*)malloc(sizeof(struct Memberfunclist));
 	temp->name=malloc(sizeof(name));
 	strcpy(temp->name, name);
