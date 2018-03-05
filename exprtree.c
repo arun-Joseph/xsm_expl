@@ -1932,6 +1932,7 @@ void Class_MInstall(struct Classtable *cptr, char *name, struct Typetable *type,
 				fl=1;
 
 			if(fl==0){
+				temp->Funcposition=-1;
 				temp->flabel=flabel++;
 				return;
 			}
@@ -1944,6 +1945,7 @@ void Class_MInstall(struct Classtable *cptr, char *name, struct Typetable *type,
 	strcpy(temp->name, name);
 	temp->type=type;
 	temp->paramlist=paramlist;
+	temp->Funcposition=-1;
 	temp->flabel=flabel++;
 	temp->next=NULL;
 

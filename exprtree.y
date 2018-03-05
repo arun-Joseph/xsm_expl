@@ -115,6 +115,10 @@ ClassDef : Cname '{' DECL Fieldlists MethodDecl ENDDECL MethodDefns '}'	{
 
 		count=0;
 		while(Mtemp!=NULL){
+			if(Mtemp->Funcposition==-1){
+				printf("Class Member Function not defined: %s.%s\n", classType->name, Mtemp->name);
+				exit(1);
+			}
 			Mtemp->Funcposition=count++;
 			Mtemp=Mtemp->next;
 		}
@@ -154,6 +158,7 @@ Cname : ID	{
 		Mtemp=classType->Vfuncptr;
 		while(Mtemp!=NULL){
 			Class_MInstall(CLookup($1->name), Mtemp->name, Mtemp->type, Mtemp->paramlist);
+			Mtail->Funcposition=0;
 			Mtail->flabel=Mtemp->flabel;
 			flabel--;
 			Mtemp=Mtemp->next;
@@ -356,6 +361,7 @@ FDef : FuncType ID '(' ParamList ')' '{' LDeclBlock Body '}'	{
 				exit(1);
 			}
 
+			Mtemp->Funcposition=0;
 			fprintf(target_file, "F%d:\n", Mtemp->flabel);
 			fprintf(target_file, "PUSH BP\n");
 			fprintf(target_file, "MOV BP, SP\n");
@@ -437,6 +443,7 @@ FDef : FuncType ID '(' ParamList ')' '{' LDeclBlock Body '}'	{
 				exit(1);
 			}
 
+			Mtemp->Funcposition=0;
 			fprintf(target_file, "F%d:\n", Mtemp->flabel);
 			fprintf(target_file, "PUSH BP\n");
 			fprintf(target_file, "MOV BP, SP\n");

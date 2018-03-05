@@ -75,7 +75,14 @@ decl
 	LinkedList prev;
 	int init(int key);
 	int printrev();
+	int init();
 enddecl
+	int init(){
+		begin
+			return 1;
+		end
+	}
+
 	int init(int key){
 		begin
 			self.key=key;
