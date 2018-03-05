@@ -1,136 +1,146 @@
+type
+  list{
+	int data;
+	list next;
+	list prev;
+  }
+endtype
+
 class
-LinkedList{
+linkedlist{
 decl
-	int key;
-	LinkedList next;
-	int init(int key);
-	int getkey();
-	int insert(int key);
-	int del();
-	int printrev();
+   list head;
+   list tail;
+   int length;
+   list gethead();
+   list gettail();
+   int init();
+   int insert(int data);
+   int print(list temp);
 enddecl
-	int init(int key){
+   list gethead(){
 		begin
-			self.key=key;
-			self.next=null;
+			return self.head;
+		end
+   }
+   list gettail(){
+		begin
+			return self.tail;
+		end
+   }
+   int init(){
+		begin
+			self.head=null;
+			self.tail=null;
+			self.length=0;
 			return 1;
 		end
-	}
-
-	int getkey(){
-		begin
-			return self.key;
-		end
-	}
-
-	int insert(int key){
+   }
+   int insert(int data){
 		decl
-			int temp;
+			list temp;
 		enddecl
 		begin
-			if(self.next==null) then
-				self.next=new(LinkedList);
-				temp=self.next.init(key);
+			temp=alloc();
+			temp.data=data;
+			temp.next=null;
+			temp.prev=null;
+			if(self.head== null)then
+				self.head=temp;
+				self.tail=temp;
 			else
-				temp=self.next.insert(key);
+				self.tail.next=temp;
+				self.tail=temp;
 			endif;
+			self.length=self.length+1;
 			return 1;
 		end
-	}
-
-	int del(){
+   }
+   int print(list temp){
 		decl
-			int temp;
+			int a;
 		enddecl
 		begin
-			if(self.key!=0) then
-				if(self.next.getkey()==0) then
-					self.next=null;
-				else
-					temp=self.next.del();
-				endif;
-			endif;
-			return 1;
-		end
-	}
-
-	int printrev(){
-		decl
-			int temp;
-		enddecl
-		begin
-			if(self.next==null) then
-				write(self.key);
+			if(temp!=null) then
+				a=self.print(temp.next);
+				write(temp.data);
 			else
-				temp=self.next.printrev();
-				write(self.key);
+				write("LL");
 			endif;
 			return 1;
 		end
-	}
+   }
 }
 
-DoubleLinkedList extends LinkedList{
+doublelinkedlist extends linkedlist{
 decl
-	LinkedList prev;
-	int init(int key);
-	int printrev();
-	int init();
+	int insert(int data);
+	int print(list temp);
 enddecl
-	int init(){
-		begin
-			return 1;
-		end
-	}
-
-	int init(int key){
-		begin
-			self.key=key;
-			self.next=null;
-			self.prev=null;
-			return 1;
-		end
-	}
-
-	int printrev(){
+  int insert(int data){
 		decl
-			int temp;
+			list temp;
 		enddecl
 		begin
-			if(self.next==null) then
-				write(self.key);
+			temp=alloc();
+			temp.data=data;
+			temp.next=null;
+			temp.prev=null;
+			if(self.head== null)then
+				self.head=temp;
+				self.tail=temp;
 			else
-				temp=self.next.printrev();
-				write(self.key);
+				self.tail.next=temp;
+				temp.prev=self.tail;
+				self.tail=temp;
 			endif;
+			self.length=self.length+1;
 			return 1;
 		end
-	}
+  }
+
+  int print(list temp){
+		begin
+			write("DLL");
+			while(temp!=null) do
+				write(temp.data);
+				temp=temp.prev;
+			endwhile;
+			return 1;
+		end
+  }
 }
 endclass
-
 decl
-	LinkedList Lhead;
-	DoubleLinkedList Dhead;
+	linkedlist obj;
+	doublelinkedlist dobj;
 enddecl
-
 int main(){
-decl
-	int val, temp, n;
-enddecl
-begin
-	val=initialize();
-	Lhead=new(LinkedList);
-	read(n);
-	temp=Lhead.init(n);
-	while(n!=0) do
-		read(n);
-		temp=Lhead.insert(n);
-	endwhile;
-	temp=Lhead.del();
-	temp=Lhead.printrev();
-	Dhead=Lhead;
-	temp=Dhead.printrev();
-	return 1;
-end
+	decl
+		int x,y,z;
+		list a;
+	enddecl
+	begin
+		x=initialize();
+
+		obj=new(linkedlist);
+		x=obj.init();
+		read(x);
+		while(x!=0)do
+			read(y);
+			z=obj.insert(y);
+			x=x-1;
+		endwhile;
+		x=obj.print(obj.gethead());
+
+		dobj=new(doublelinkedlist);
+		x=dobj.init();
+		a=obj.gethead();
+		while(a!=null) do
+			z=dobj.insert(a.data);
+			a=a.next;
+		endwhile;
+		x=dobj.print(dobj.gettail());
+		return 1;
+	end
 }
