@@ -34,6 +34,12 @@ simulator_run ()
 
 	printf ("Machine is halting.\n");
 
+	/* Machine Optimisation Details */
+	printf ("Machine Overhead =>\n");
+	printf ("Instruction :- %d\n", _theoverhead.instr);
+	printf ("Memory Access :- %d\n", _theoverhead.mem);
+	printf ("Interrupt :- %d\n", _theoverhead.intr);
+
 	/* A little housekeeping. */
 	machine_destroy ();
 	disk_close ();

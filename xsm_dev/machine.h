@@ -126,6 +126,17 @@ struct _xsm_options
 }
 xsm_options;
 
+typedef
+struct _xsm_overhead
+{
+   int instr;
+   int mem;
+   int intr;
+}
+xsm_overhead;
+
+xsm_overhead _theoverhead;
+
 int
 machine_init (xsm_options *options);
 

@@ -87,9 +87,13 @@ machine_init (xsm_options *options)
    _thecpu.disk_state = XSM_DISK_IDLE;
 
    /* Initialise timer clock*/
-   
    _thecpu.timer = _theoptions.timer;
    
+   /* Initialise overhead */
+   _theoverhead.instr = 0;
+   _theoverhead.mem = 0;
+   _theoverhead.intr = 0;
+
    return XSM_SUCCESS;
 }
 
@@ -568,6 +572,9 @@ machine_execute_logical (int opcode)
    token = tokenize_next_token(&token_info);
    src_right_reg = machine_get_register(token_info.str);
 
+  if (machine_get_mode() == PRIVILEGE_USER)
+    _theoverhead.instr++;
+
   /* String operation */
   
   if(word_get_unix_type(src_left_reg) == XSM_TYPE_STRING || 
@@ -649,6 +656,9 @@ machine_execute_brkp ()
 {
    /* TODO: Initiate debugger. */
 
+   if (machine_get_mode() == PRIVILEGE_USER)
+      _theoverhead.instr++;
+
    /* If debug mode is not enabled, neglect this instruction. */
    if (!_theoptions.debug)
       return XSM_SUCCESS;
@@ -674,6 +684,9 @@ machine_execute_unary (int opcode)
 
    val = word_get_integer(arg_reg);
 
+   if (machine_get_mode() == PRIVILEGE_USER)
+      _theoverhead.instr++;
+
    switch (opcode)
    {
       case INR:
@@ -696,6 +709,9 @@ machine_execute_mov ()
    xsm_word *l_address, *r_address;
    YYSTYPE token_info;
 
+   if (machine_get_mode() == PRIVILEGE_USER)
+      _theoverhead.instr++;
+
    token = tokenize_peek (&token_info);
 
    switch (token)
@@ -704,6 +720,10 @@ machine_execute_mov ()
          _thecpu.mem_low = machine_get_address_int (TRUE);
          _thecpu.mem_high = _thecpu.mem_high;
          l_address = machine_memory_get_word(_thecpu.mem_low);
+
+         if (machine_get_mode() == PRIVILEGE_USER)
+            _theoverhead.mem++;
+
          break;
 
       case TOKEN_REGISTER:
@@ -726,6 +746,10 @@ machine_execute_mov ()
       case TOKEN_DREF_L:
          r_address = machine_get_address (FALSE);
          word_copy (l_address, r_address);
+
+         if (machine_get_mode() == PRIVILEGE_USER)
+            _theoverhead.mem++;
+
          break;
 
       case TOKEN_REGISTER:
@@ -737,11 +761,19 @@ machine_execute_mov ()
       case TOKEN_NUMBER:
          word_store_integer (l_address, token_info.val);
          tokenize_next_token(&token_info);
+
+         if (machine_get_mode() == PRIVILEGE_USER)
+            _theoverhead.mem++;
+
          break;
 
       case TOKEN_STRING:
          word_store_string (l_address, token_info.str);
          tokenize_next_token(&token_info);
+
+         if (machine_get_mode() == PRIVILEGE_USER)
+            _theoverhead.mem++;
+
          break;
 
       default:
@@ -782,6 +814,10 @@ machine_get_address_int (int write)
 
       case TOKEN_NUMBER:
          address = token_info.val;
+
+         if (machine_get_mode() == PRIVILEGE_USER)
+            _theoverhead.mem++;
+
          break;
 
       default:
@@ -849,6 +885,10 @@ machine_execute_arith (int opcode)
    if (token == TOKEN_NUMBER)
    {
       r_value = token_info.val;
+
+      if (machine_get_mode() == PRIVILEGE_USER)
+         _theoverhead.mem++;
+
    }
    else
    {
@@ -902,6 +942,11 @@ machine_execute_jump (int opcode)
 
    token = tokenize_next_token(&token_info);
 
+   if (machine_get_mode() == PRIVILEGE_USER){
+      _theoverhead.instr++;
+      _theoverhead.mem++;
+   }
+
    if (token == TOKEN_NUMBER)
    {
       test = TRUE; /* Take the branch, the jump is unconditional. */
@@ -947,6 +992,9 @@ machine_execute_stack (int opcode)
    xsm_word *reg;
 
    token = tokenize_next_token(&token_info);
+
+   if (machine_get_mode() == PRIVILEGE_USER)
+      _theoverhead.instr++;
 
    if (token == TOKEN_REGISTER)
    {
@@ -1107,10 +1155,16 @@ machine_execute_call ()
    YYSTYPE token_info;
 
    token = tokenize_next_token(&token_info);
+
+   if (machine_get_mode() == PRIVILEGE_USER)
+      _theoverhead.instr++;
    
    if (token == TOKEN_NUMBER)
    {
       target = token_info.val;
+
+      if (machine_get_mode() == PRIVILEGE_USER)
+         _theoverhead.mem++;
    }
    else
    {
@@ -1127,6 +1181,9 @@ machine_execute_ret ()
    xsm_word *spreg, *ipreg;
    xsm_word *stack_pointer;
    int curr_sp;
+
+   if (machine_get_mode() == PRIVILEGE_USER)
+      _theoverhead.instr++;
 
    spreg = registers_get_register ("SP");
    stack_pointer = machine_stack_pointer (TRUE);
@@ -1150,6 +1207,11 @@ machine_execute_interrupt()
    int interrupt_num;
 
    token = tokenize_next_token(&token_info);
+
+   if (machine_get_mode() == PRIVILEGE_USER){
+      _theoverhead.instr++;
+      _theoverhead.intr++;
+   }
 
    interrupt_num = token_info.val;
    
