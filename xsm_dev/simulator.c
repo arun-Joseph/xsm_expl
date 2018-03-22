@@ -9,6 +9,8 @@
 static
 xsm_options _options;
 
+xsm_overhead _theoverhead;
+
 /* By default, assign 20 ticks. */
 static
 const int XSM_TIMER_DURATION = 0;
@@ -37,7 +39,7 @@ simulator_run ()
 	/* Machine Optimisation Details */
 	printf ("Machine Overhead =>\n");
 	printf ("Instruction Fetch :- %d\n", _theoverhead.instr);
-	printf ("Memory Access :- %d\n", _theoverhead.instr + _theoverhead.mem);
+	printf ("Memory Access :- %d\n", _theoverhead.mem + _theoverhead.instr);
 	printf ("Interrupts :- %d\n", _theoverhead.intr);
 
 	/* A little housekeeping. */

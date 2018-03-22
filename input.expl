@@ -1,13 +1,11 @@
 decl
+	int x;
 enddecl
 int main(){
 	decl
-		int x;
 	enddecl
 	begin
-		if(1<2) then
-			x=1;
-		endif;
+		x=1;
 		return 0;
 	end
 }
