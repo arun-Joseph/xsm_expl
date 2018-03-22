@@ -148,7 +148,7 @@ xsm_word *
 machine_get_spreg ();
 
 int
-machine_run ();
+machine_run (xsm_overhead *overhead);
 
 /* The one point for all exception handling. */
 int

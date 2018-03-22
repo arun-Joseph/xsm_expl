@@ -9,7 +9,8 @@
 static
 xsm_options _options;
 
-xsm_overhead _theoverhead;
+static
+xsm_overhead _overhead;
 
 /* By default, assign 20 ticks. */
 static
@@ -31,16 +32,16 @@ simulator_run ()
 		return XSM_FAILURE;
 
 	/* Fire! */
-	if (!machine_run ())
+	if (!machine_run (&_overhead))
 		return XSM_FAILURE;
 
 	printf ("Machine is halting.\n");
 
 	/* Machine Optimisation Details */
 	printf ("Machine Overhead =>\n");
-	printf ("Instruction Fetch :- %d\n", _theoverhead.instr);
-	printf ("Memory Access :- %d\n", _theoverhead.mem + _theoverhead.instr);
-	printf ("Interrupts :- %d\n", _theoverhead.intr);
+	printf ("Instruction Fetch :- %d\n", _overhead.instr);
+	printf ("Memory Access :- %d\n", _overhead.mem + _overhead.instr);
+	printf ("Interrupts :- %d\n", _overhead.intr);
 
 	/* A little housekeeping. */
 	machine_destroy ();

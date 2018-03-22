@@ -12,6 +12,7 @@ xsm_cpu _thecpu;
 static
 xsm_options _theoptions;
 
+static
 xsm_overhead _theoverhead;
 
 const char *instructions[]=
@@ -221,7 +222,7 @@ machine_instr_req_privilege (int opcode)
 }
 
 int
-machine_run ()
+machine_run (xsm_overhead *overhead)
 {
    int token, opcode;
    YYSTYPE token_info;
@@ -287,6 +288,10 @@ machine_run ()
 	 //		machine_post_execute ();
    
    }
+
+   overhead->instr = _theoverhead.instr;
+   overhead->mem = _theoverhead.mem;
+   overhead->intr = _theoverhead.intr;
 
    return TRUE;
 }
