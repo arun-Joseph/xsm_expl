@@ -129,13 +129,11 @@ xsm_options;
 typedef
 struct _xsm_overhead
 {
-   int instr;
-   int mem;
-   int intr;
+   int instr;	// Instructions
+   int mem;	// Memory Access
+   int intr;	// Interrupts
 }
 xsm_overhead;
-
-xsm_overhead _theoverhead;
 
 int
 machine_init (xsm_options *options);

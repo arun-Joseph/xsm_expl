@@ -36,9 +36,9 @@ simulator_run ()
 
 	/* Machine Optimisation Details */
 	printf ("Machine Overhead =>\n");
-	printf ("Instruction :- %d\n", _theoverhead.instr);
-	printf ("Memory Access :- %d\n", _theoverhead.mem);
-	printf ("Interrupt :- %d\n", _theoverhead.intr);
+	printf ("Instruction Fetch :- %d\n", _theoverhead.instr);
+	printf ("Memory Access :- %d\n", _theoverhead.instr + _theoverhead.mem);
+	printf ("Interrupts :- %d\n", _theoverhead.intr);
 
 	/* A little housekeeping. */
 	machine_destroy ();
